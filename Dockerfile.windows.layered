@@ -11,15 +11,15 @@ RUN apt-get update \
 
 # Ensure wrappers exist for Windows-styled qmake-generated names
 RUN mkdir -p /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5 \
-    && cat > /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlrelease.exe <<'EOF'\
-#!/bin/sh\
-exec /usr/bin/lrelease "$@"\
-EOF\
+    && cat > /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlrelease.exe <<'EOF'
+#!/bin/sh
+exec /usr/bin/lrelease "$@"
+EOF
     && chmod +x /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlrelease.exe \
-    && cat > /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlupdate.exe <<'EOF'\
-#!/bin/sh\
-exec /usr/bin/lupdate "$@"\
-EOF\
+    && cat > /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlupdate.exe <<'EOF'
+#!/bin/sh
+exec /usr/bin/lupdate "$@"
+EOF
     && chmod +x /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlupdate.exe
 
 # Default command is to open a shell — users can run their build script inside the container
