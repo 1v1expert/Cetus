@@ -114,10 +114,6 @@
         <source>E&amp;xit User Interface</source>
         <translation>Benutzeroberfläche schli&amp;eßen</translation>
     </message>
-    <message>
-        <source>Show &amp;spindle speed</source>
-        <translation type="unfinished"></translation>
-    </message>
 </context>
 <context>
     <name>ApplicationStatusBar</name>

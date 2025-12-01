@@ -1,0 +1,32 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install packages required to build MXE and project
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		build-essential git ccache wget ca-certificates \
+		automake autoconf libtool python3 python3-pip \
+		g++-mingw-w64-x86-64 p7zip-full unzip bison flex \
+		gettext pkg-config libssl-dev libbz2-dev libexpat1-dev \
+		libcurl4-openssl-dev rsync make cmake ninja-build ca-certificates \
+	&& rm -rf /var/lib/apt/lists/*
+
+# Clone MXE (will be built inside image). This step downloads MXE sources.
+RUN git clone https://github.com/mxe/mxe /usr/lib/mxe
+
+ENV PATH="/usr/lib/mxe/usr/bin:${PATH}"
+WORKDIR /usr/lib/mxe
+
+# Build Qt5 for MinGW (x86_64). This is heavy and may take a long time.
+# You can comment this out and build MXE manually in CI/cache layer if desired.
+RUN make MXE_TARGETS='x86_64-w64-mingw32.static' qt5 -j"$(nproc)"
+
+# Create a working directory for building Cetus and copy project files
+WORKDIR /build
+COPY . /build/Cetus
+
+RUN mkdir -p /build/artifacts
+
+# Default command runs the build script inside container
+CMD ["/build/scripts/docker-build-windows.sh"]

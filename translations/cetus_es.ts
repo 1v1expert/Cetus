@@ -9,8 +9,15 @@
     </message>
     <message>
         <source>About &amp;Мосчпу</source>
-        <translation>About &amp;Мосчпу</translation>
+        <translation type="vanished">About &amp;Мосчпу</translation>
     </message>
+    <message>
+        <source>Close</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ApplicationMenuBar</name>
     <message>
         <source>&amp;File</source>
         <translation type="unfinished"></translation>
@@ -86,6 +93,10 @@
     <message>
         <source>&amp;Help</source>
         <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>About &amp;Мосчпу</source>
+        <translation type="unfinished">About &amp;Мосчпу</translation>
     </message>
 </context>
 <context>
