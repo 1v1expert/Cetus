@@ -8,8 +8,8 @@
         <translation>Закрыть</translation>
     </message>
     <message>
-        <source>About Cetus</source>
-        <translation>О Cetus</translation>
+        <source>About Мосчпу</source>
+        <translation>О Мосчпу</translation>
     </message>
 </context>
 <context>
@@ -79,8 +79,8 @@
         <translation>Помощь</translation>
     </message>
     <message>
-        <source>About &amp;Cetus</source>
-        <translation>О Cetus</translation>
+        <source>About &amp;Мосчпу</source>
+        <translation>О Мосчпу</translation>
     </message>
     <message>
         <source>Open file from machine...</source>

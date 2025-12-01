@@ -8,7 +8,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>About Cetus</source>
+        <source>About Мосчпу</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -79,7 +79,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>About &amp;Cetus</source>
+        <source>About &amp;Мосчпу</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

@@ -1,11 +1,12 @@
 import QtQuick 2.0
+import "../Singletons"
 
 Item {
     property int decimals: 3
     property int digits: 4
     property double value: 12.2349
     property color activeColor: "white"
-    property color inactiveColor: "#888888"
+    property color inactiveColor: Theme.inactive
     property alias font: digitsText.font
 
     id: root

@@ -6,14 +6,14 @@
     <message>
         <source>About Cetus</source>
         <translation type="unfinished"></translation>
+    <message>
+        <source>About Мосчпу</source>
+        <translation>Acerca de Мосчпу</translation>
     </message>
     <message>
-        <source>Close</source>
-        <translation type="unfinished"></translation>
+        <source>About &amp;Мосчпу</source>
+        <translation>About &amp;Мосчпу</translation>
     </message>
-</context>
-<context>
-    <name>ApplicationMenuBar</name>
     <message>
         <source>&amp;File</source>
         <translation type="unfinished"></translation>
