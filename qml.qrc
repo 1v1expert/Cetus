@@ -23,7 +23,7 @@
         <file>Cetus/DRO/StyledDroBase.qml</file>
         <file>Cetus/WebcamPanel.qml</file>
         <file>Cetus/Singletons/Info.qml</file>
-        <file>Cetus/Singletons/Theme.qml</file>
+
         <file>Cetus/Singletons/qmldir</file>
         <file>Cetus/StatusBar/ApplicationStatusBar.qml</file>
         <file>Cetus/StatusBar/MachineStatusLabel.qml</file>
