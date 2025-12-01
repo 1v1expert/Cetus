@@ -10,6 +10,7 @@ RUN apt-get update \
 		g++-mingw-w64-x86-64 p7zip-full unzip bison flex \
 		gettext pkg-config libssl-dev libbz2-dev libexpat1-dev \
 		libcurl4-openssl-dev rsync make cmake ninja-build ca-certificates \
+		gperf intltool lzip python3-mako ruby gdk-pixbuf2.0-tools \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Clone MXE (will be built inside image). This step downloads MXE sources.
@@ -20,7 +21,7 @@ WORKDIR /usr/lib/mxe
 
 # Build Qt5 for MinGW (x86_64). This is heavy and may take a long time.
 # You can comment this out and build MXE manually in CI/cache layer if desired.
-RUN make MXE_TARGETS='x86_64-w64-mingw32.static' qt5 -j"$(nproc)"
+RUN make MXE_TARGETS='x86_64-w64-mingw32.static' qt5 -j1
 
 # Create a working directory for building Cetus and copy project files
 WORKDIR /build
