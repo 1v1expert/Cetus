@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends \
 		build-essential git ccache wget ca-certificates \
-		automake autoconf libtool python3 python3-pip \
+		automake autoconf libtool libtool-bin gettext python3 python3-pip \
 		g++-mingw-w64-x86-64 p7zip-full unzip bison flex \
 		gettext pkg-config libssl-dev libbz2-dev libexpat1-dev \
 		libcurl4-openssl-dev rsync make cmake ninja-build ca-certificates \
