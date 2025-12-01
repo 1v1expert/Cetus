@@ -15,11 +15,13 @@ RUN mkdir -p /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5 \
 #!/bin/sh
 exec /usr/bin/lrelease "$@"
 EOF
-    && chmod +x /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlrelease.exe \
-    && cat > /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlupdate.exe <<'EOF'
+
+RUN cat > /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlupdate.exe <<'EOF'
 #!/bin/sh
 exec /usr/bin/lupdate "$@"
 EOF
+
+RUN chmod +x /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlrelease.exe \
     && chmod +x /usr/lib/mxe/usr/x86_64-w64-mingw32.static/qt5/binlupdate.exe
 
 # Default command is to open a shell — users can run their build script inside the container
