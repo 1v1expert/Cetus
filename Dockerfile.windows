@@ -21,6 +21,15 @@ WORKDIR /usr/lib/mxe
 
 # Build Qt5 for MinGW (x86_64). This is heavy and may take a long time.
 # You can comment this out and build MXE manually in CI/cache layer if desired.
+RUN set -ex \
+	&& echo "=== Debug: check required tools ===" \
+	&& echo "PATH=$PATH" \
+	&& command -v autopoint || true \
+	&& autopoint --version || true \
+	&& command -v libtool || true \
+	&& libtool --version || true \
+	&& ls -l /usr/bin/autopoint /usr/bin/libtool /usr/bin/libtoolize || true
+
 RUN make MXE_TARGETS='x86_64-w64-mingw32.static' qt5 -j1
 
 # Create a working directory for building Cetus and copy project files
