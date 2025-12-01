@@ -22,7 +22,17 @@ docker build -t cetus-windows -f Dockerfile.windows .
 docker run --rm -v "$PWD":/build/Cetus -v "$PWD"/artifacts:/build/artifacts cetus-windows
 ```
 
-3) After successful build, check `artifacts/` for `.exe` and required `.dll` files.
+3) Rebuild a new docker image
+```bash
+docker build -f Dockerfile.windows.layered -t cetus-windows-fast --build-arg BASE_IMAGE=cetus-windows .
+```
+
+4) Run a new container
+```bash
+docker run --rm -v "$PWD":/build/Cetus -v "$PWD"/artifacts:/build/artifacts -v "$PWD"/scripts/:/build/scripts/ cetus-windows-fast /build/scripts/docker-build-windows.sh
+```
+
+5) After successful build, check `artifacts/` for `.exe` and required `.dll` files.
 
 If you prefer not to build Qt inside the image, you can use an MXE image that already contains the built Qt packages, or prepare a CI cache.
 
