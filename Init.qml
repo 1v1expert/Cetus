@@ -9,7 +9,7 @@ Item {
     width: 1200
     height: 1000
     
-    property string title: "Cetus"
+    property string title: "Мосчпу"
     property alias toolBar: cetus.toolBar
     property alias statusBar: cetus.statusBar
     property alias menuBar: cetus.menuBar
