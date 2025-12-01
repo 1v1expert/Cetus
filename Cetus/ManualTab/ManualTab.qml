@@ -17,8 +17,6 @@ Tab {
 
             CoolantControls {}
 
-            SpindleControls {}
-
             Item {
                 Layout.fillHeight: true
             }

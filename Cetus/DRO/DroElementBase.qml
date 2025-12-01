@@ -3,7 +3,7 @@ import QtQuick.Layouts 1.1
 
 Item {
     property string axisName: "X"
-    property color axisColor: "#FFAA00"
+    property color axisColor: "#FF8C42"
     property color backgroundColor: "black"
     property color borderColor: "white"
     property color textColor: "white"

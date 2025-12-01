@@ -5,7 +5,7 @@ Item {
     property int digits: 4
     property double value: 12.2349
     property color activeColor: "white"
-    property color inactiveColor: "#BBBBBB"
+    property color inactiveColor: "#888888"
     property alias font: digitsText.font
 
     id: root

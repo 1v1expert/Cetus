@@ -8,7 +8,7 @@ import "./Singletons"
 
 Dialog {
     id: aboutDialog
-    title: qsTr("About Cetus")
+    title: qsTr("About Мосчпу")
 
     SystemPalette { id: systemPalette }
 
@@ -30,7 +30,7 @@ Dialog {
 
             Label {
                 Layout.fillWidth: true
-                text: "Cetus " + Info.version
+                text: "Мосчпу " + Info.version
                 font.pixelSize: dummyLabel.font.pixelSize * 1.5
                 font.bold: true
             }

@@ -11,7 +11,7 @@ ColumnLayout {
 
     RapidrateControl {}
 
-    SpindlerateControl {}
+    // spindle override removed
 
     MaximumVelocityControl {}
 

@@ -56,7 +56,7 @@ ServiceWindow {
     ApplicationCore {
         id: applicationCore
         notifications: applicationNotifications
-        applicationName: "Cetus"
+        applicationName: "Мосчпу"
     }
 
     PathViewCore {
