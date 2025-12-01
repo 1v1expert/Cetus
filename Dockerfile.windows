@@ -10,7 +10,7 @@ RUN apt-get update \
 		g++-mingw-w64-x86-64 p7zip-full unzip bison flex \
 		gettext pkg-config libssl-dev libbz2-dev libexpat1-dev \
 		libcurl4-openssl-dev rsync make cmake ninja-build ca-certificates \
-		gperf intltool lzip python3-mako ruby gdk-pixbuf2.0-tools \
+		gperf intltool lzip python3-mako ruby libgdk-pixbuf2.0-dev \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Clone MXE (will be built inside image). This step downloads MXE sources.
