@@ -1,6 +1,7 @@
 import QtQuick 2.0
 import Machinekit.Application 1.0
 import Machinekit.Application.Controls 1.0
+import "../Singletons"
 
 AbstractDigitalReadOut {
     id: root
@@ -25,7 +26,7 @@ AbstractDigitalReadOut {
                 item.name = root.axisNames[i];
                 item.value = Number(root.position[root._axisNames[i]]);
                 var homed = (i < root.axisHomed.length) && root.axisHomed[root._axisIndices[i]].homed;
-                item.color = homed ? "lightgreen" : "#E74C3C";
+                item.color = homed ? "lightgreen" : Theme.danger;
                 item.secondValue = Number(root.dtg[root._axisNames[i]]);
                 list.push(item);
             }
@@ -35,7 +36,7 @@ AbstractDigitalReadOut {
                 item.name = qsTr("Rad");
                 item.value = Number(root.position['x']);
                 var homed = root.axisHomed[0].homed;
-                item.color = homed ? "lightgreen" : "#E74C3C";
+                item.color = homed ? "lightgreen" : Theme.danger;
                 item.secondValue = Number(root.dtg['x']);
                 item = Object.assign({}, item);
                 item.name = qsTr("Dia");
@@ -110,7 +111,7 @@ AbstractDigitalReadOut {
                 var item = {};
                 item.name = root.axisNames[i];
                 item.value = Number(root.g5xOffset[root._axisNames[i]])
-                item.color = "#FFF0E6";
+                item.color = Theme.droBg1;
                 item.secondValue = 0.0;
                 list.push(item);
             }
@@ -136,7 +137,7 @@ AbstractDigitalReadOut {
                 var item = {};
                 item.name = root.axisNames[i];
                 item.value = Number(root.g92Offset[root._axisNames[i]])
-                item.color = "#D6F5F9";
+                item.color = Theme.droBg2;
                 item.secondValue = 0.0;
                 list.push(item);
             }
@@ -161,7 +162,7 @@ AbstractDigitalReadOut {
                 var item = {};
                 item.name = root.axisNames[i];
                 item.value = Number(root.toolOffset[root._axisNames[i]])
-                item.color = "#E8F0FF";
+                item.color = Theme.droBg3;
                 item.secondValue = 0.0;
                 list.push(item);
             }

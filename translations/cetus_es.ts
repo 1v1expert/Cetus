@@ -4,9 +4,6 @@
 <context>
     <name>AboutDialog</name>
     <message>
-        <source>About Cetus</source>
-        <translation type="unfinished"></translation>
-    <message>
         <source>About Мосчпу</source>
         <translation>Acerca de Мосчпу</translation>
     </message>
@@ -88,14 +85,6 @@
     </message>
     <message>
         <source>&amp;Help</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>About &amp;Cetus</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Show &amp;spindle speed</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

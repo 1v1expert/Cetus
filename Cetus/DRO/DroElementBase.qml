@@ -1,12 +1,13 @@
 import QtQuick 2.5
 import QtQuick.Layouts 1.1
+import "../Singletons"
 
 Item {
     property string axisName: "X"
-    property color axisColor: "#FF8C42"
-    property color backgroundColor: "black"
-    property color borderColor: "white"
-    property color textColor: "white"
+    property color axisColor: Theme.axisColor
+    property color backgroundColor: Theme.window
+    property color borderColor: Theme.inactive
+    property color textColor: Theme.text
     property int decimals: 3
     property int digits: 4
     property bool rightTextVisible: true
