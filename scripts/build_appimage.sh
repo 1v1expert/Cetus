@@ -82,16 +82,53 @@ if [ ! -d "$PROJECT_ROOT/Cetus/AppDir" ]; then
     exit 1
 fi
 
-"$APPIMAGETOOL" "$PROJECT_ROOT/Cetus/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
-chmod +x "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+# If appimagetool is an AppImage, we need to extract it or install FUSE
+if [[ "$APPIMAGETOOL" == *.AppImage ]]; then
+    echo "Detected AppImage format. Attempting to extract and use binary..."
+    
+    # Try to extract appimagetool
+    APPIMAGETOOL_DIR=$(mktemp -d)
+    "$APPIMAGETOOL" --appimage-extract > /dev/null 2>&1 || true
+    
+    # Check if AppRun was extracted
+    if [ -f "squashfs-root/AppRun" ]; then
+        APPIMAGETOOL_BIN="$PWD/squashfs-root/AppRun"
+        echo "Using extracted appimagetool: $APPIMAGETOOL_BIN"
+        "$APPIMAGETOOL_BIN" "$PROJECT_ROOT/Cetus/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+        rm -rf squashfs-root
+    else
+        # Fallback: try to install libfuse2 and run AppImage
+        echo "Attempting to install libfuse2 for AppImage support..."
+        sudo apt-get update -o APT::Get::AllowUnauthenticated=true -qq 2>/dev/null || true
+        sudo apt-get install -y -o APT::Get::AllowUnauthenticated=true libfuse2 2>/dev/null || true
+        
+        # Try running appimagetool again
+        if "$APPIMAGETOOL" "$PROJECT_ROOT/Cetus/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage" 2>&1; then
+            echo "✓ AppImage created with libfuse2"
+        else
+            echo "❌ Failed to create AppImage. Try manually:"
+            echo "   appimagetool $PROJECT_ROOT/Cetus/AppDir $PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+            exit 1
+        fi
+    fi
+else
+    # Regular appimagetool binary
+    "$APPIMAGETOOL" "$PROJECT_ROOT/Cetus/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+fi
 
-echo ""
-ls -lh "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
-echo ""
-echo "✓ AppImage successfully created: $PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
-echo ""
-echo "To test on МОС 12 Linux:"
-echo "  ./artifacts/Cetus-x86_64.AppImage"
+if [ -f "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage" ]; then
+    chmod +x "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+    echo ""
+    ls -lh "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+    echo ""
+    echo "✓ AppImage successfully created: $PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+    echo ""
+    echo "To test on МОС 12 Linux:"
+    echo "  ./artifacts/Cetus-x86_64.AppImage"
+else
+    echo "❌ Error: AppImage not created"
+    exit 1
+fi
 
 echo ""
 echo "=== Done ==="
