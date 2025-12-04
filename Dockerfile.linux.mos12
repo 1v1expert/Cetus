@@ -45,10 +45,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     patchelf \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
-# Download and install appimagetool (AppImage creation tool)
-RUN wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool && \
-    chmod +x /usr/local/bin/appimagetool && \
-    /usr/local/bin/appimagetool --version || echo "appimagetool ready (may need FUSE to extract)"
+# Note: appimagetool will be downloaded on the host to avoid FUSE issues in Docker
+# We only prepare the AppDir here
 
 # Copy project files
 COPY . /build/Cetus

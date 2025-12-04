@@ -13,44 +13,62 @@ echo "Project root: $PROJECT_ROOT"
 echo ""
 
 # Step 1: Build Docker image
-echo "[1/3] Building Docker image..."
+echo "[1/4] Building Docker image..."
 docker build $NO_CACHE \
     -f "$PROJECT_ROOT/Dockerfile.linux.mos12" \
-    -t cetus-mos12-appimage:latest \
+    -t cetus-linux-appimage:latest \
     "$PROJECT_ROOT"
 
 # Step 2: Run container and create AppDir
-echo "[2/3] Creating AppDir inside container..."
+echo "[2/4] Creating AppDir inside container..."
 docker run --rm \
     -v "$PROJECT_ROOT":/build \
     -w /build/Cetus \
-    cetus-mos12-appimage:latest \
+    cetus-linux-appimage:latest \
     bash -c "
-        # AppDir is already created, now we'll use appimagetool to package
-        appimagetool /build/Cetus/AppDir /build/artifacts/Cetus-x86_64.AppImage || \
-        echo 'appimagetool not available in container, trying linuxdeployqt...' && \
-        linuxdeployqt /build/Cetus/AppDir/usr/bin/Cetus -appimage -no-strip || \
-        echo 'Warning: AppImage creation tools not fully available'
+        echo 'AppDir created. Contents:' && \
+        find /build/Cetus/AppDir -type f | head -20
     "
 
-# Step 3: Package AppImage on host (fallback/verification)
-echo "[3/3] Verifying AppImage..."
+# Step 3: Download appimagetool on host (avoid FUSE issues in Docker)
+echo "[3/4] Setting up appimagetool on host..."
+APPIMAGETOOL="$PROJECT_ROOT/appimagetool-x86_64.AppImage"
+if [ ! -f "$APPIMAGETOOL" ]; then
+    echo "Downloading appimagetool..."
+    wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage \
+        -O "$APPIMAGETOOL" && chmod +x "$APPIMAGETOOL" || \
+        { echo "Failed to download appimagetool. Trying to use system appimagetool..."; APPIMAGETOOL=$(command -v appimagetool || true); }
+fi
+
+if [ -z "$APPIMAGETOOL" ] || [ ! -f "$APPIMAGETOOL" ]; then
+    echo "⚠ Warning: appimagetool not available."
+    echo "  You can create AppImage manually:"
+    echo "  mkdir -p $PROJECT_ROOT/artifacts && mv $PROJECT_ROOT/AppDir $PROJECT_ROOT/artifacts/"
+    echo "  Or install 'appimagetool' on your system."
+    exit 1
+fi
+
+# Step 4: Create AppImage using appimagetool on host
+echo "[4/4] Creating AppImage using appimagetool..."
+mkdir -p "$PROJECT_ROOT/artifacts"
+"$APPIMAGETOOL" "$PROJECT_ROOT/Cetus/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage" && \
+    chmod +x "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage" || \
+    { echo "Failed to create AppImage. Check appimagetool output above."; exit 1; }
+
+echo ""
 if [ -f "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage" ]; then
-    chmod +x "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
     ls -lh "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
     echo ""
     echo "✓ AppImage successfully created: $PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
     echo ""
     echo "To test on МОС 12 Linux:"
-    echo "  ./Cetus-x86_64.AppImage"
+    echo "  ./artifacts/Cetus-x86_64.AppImage"
     echo ""
     echo "To install system-wide (optional):"
-    echo "  sudo mv Cetus-x86_64.AppImage /usr/local/bin/Cetus"
+    echo "  sudo cp ./artifacts/Cetus-x86_64.AppImage /usr/local/bin/Cetus"
     echo "  sudo chmod +x /usr/local/bin/Cetus"
 else
     echo "⚠ Warning: AppImage not found at expected location."
-    echo "  Check Docker output above for build errors."
-    echo "  Manual fallback: use AppDir directly or install dependencies and run qmake/make locally."
 fi
 
 echo ""
