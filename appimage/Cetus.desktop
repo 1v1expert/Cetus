@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Cetus
+Comment=CNC Machine Control Application
+Comment[ru]=Приложение управления станком ЧПУ
+Exec=Cetus
+Icon=Cetus
+Categories=Utility;Engineering;Science
+Terminal=false
+Version=1.0

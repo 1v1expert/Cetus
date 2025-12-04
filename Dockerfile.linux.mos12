@@ -1,0 +1,84 @@
+# Dockerfile for building Cetus AppImage for МОС 12 (ALT Linux-based)
+# Usage: docker build -f Dockerfile.linux.mos12 -t cetus-mos12-appimage .
+
+FROM altlinux:sisyphus
+
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /build
+
+# Install build dependencies and Qt5
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    qt5-base-devel \
+    qt5-declarative-devel \
+    qt5-tools-devel \
+    qt5-quickcontrols-devel \
+    libxkbcommon-devel \
+    libxkbcommon-x11-devel \
+    libGL-devel \
+    libxcb-devel \
+    libxkbfile-devel \
+    git \
+    pkg-config \
+    ca-certificates \
+    wget \
+    curl \
+    appstream \
+    desktop-file-utils \
+    libappimage-dev \
+    appimage-builder \
+    fuse \
+    fuse-devel \
+    && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
+
+# Copy project files
+COPY . /build/Cetus
+WORKDIR /build/Cetus
+
+# Create build directory
+RUN mkdir -p /build/Cetus/build-linux
+
+# Run qmake and build
+WORKDIR /build/Cetus/build-linux
+RUN /usr/lib64/qt5/bin/qmake ../Cetus.pro -r && make -j$(nproc)
+
+# Create AppDir structure for AppImage
+RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
+    mkdir -p /build/Cetus/AppDir/usr/lib && \
+    mkdir -p /build/Cetus/AppDir/usr/share/applications && \
+    mkdir -p /build/Cetus/AppDir/usr/share/pixmaps
+
+# Copy binary
+RUN cp /build/Cetus/build-linux/Cetus /build/Cetus/AppDir/usr/bin/
+
+# Copy runtime libraries (find and copy dependencies)
+RUN ldd /build/Cetus/build-linux/Cetus | awk '{print $3}' | grep '^/' | sort -u | xargs -I {} cp -v {} /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
+
+# Copy Qt plugins and libraries
+RUN cp -r /usr/lib64/qt5/plugins /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    find /usr/lib64 -name "libQt5*.so*" -exec cp -v {} /build/Cetus/AppDir/usr/lib/ \; 2>/dev/null || true
+
+# Create .desktop file
+RUN cat > /build/Cetus/AppDir/usr/share/applications/Cetus.desktop <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=Cetus
+Comment=CNC Machine Control Application
+Exec=Cetus
+Icon=Cetus
+Categories=Utility;
+Terminal=false
+DESKTOP
+
+# Set executable bit
+RUN chmod +x /build/Cetus/AppDir/usr/bin/Cetus
+
+# Create default artifacts directory
+RUN mkdir -p /build/artifacts
+
+# Output message
+RUN echo "AppDir ready at /build/Cetus/AppDir. Use AppImageKit or appimagetool to create the AppImage." && \
+    echo "Command: appimagetool /build/Cetus/AppDir /build/artifacts/Cetus-x86_64.AppImage"
+
+CMD ["/bin/bash"]
