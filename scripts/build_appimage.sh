@@ -21,43 +21,55 @@ docker build $NO_CACHE \
 
 # Step 2: Run container and create AppDir
 echo "[2/4] Creating AppDir inside container..."
-docker run --rm \
+CONTAINER_ID=$(docker run --rm -d \
     -v "$PROJECT_ROOT":/build \
     -w /build/Cetus \
     cetus-linux-appimage:latest \
-    bash -c "
-        echo 'AppDir created. Contents:' && \
-        find /build/Cetus/AppDir -type f | head -20
-    "
+    bash -c "echo 'AppDir ready'; sleep infinity")
 
-# Step 3: Download appimagetool on host (avoid FUSE issues in Docker)
-echo "[3/4] Setting up appimagetool on host..."
-APPIMAGETOOL="$PROJECT_ROOT/appimagetool-x86_64.AppImage"
-if [ ! -f "$APPIMAGETOOL" ]; then
-    echo "Downloading appimagetool..."
-    wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage \
-        -O "$APPIMAGETOOL" && chmod +x "$APPIMAGETOOL" || \
-        { echo "Failed to download appimagetool. Trying to use system appimagetool..."; APPIMAGETOOL=$(command -v appimagetool || true); }
+# Wait for container to be ready
+sleep 2
+
+# Copy AppDir from container to host
+echo "Copying AppDir from container..."
+docker cp "$CONTAINER_ID":/build/Cetus/AppDir "$PROJECT_ROOT/AppDir"
+
+# Stop container
+docker stop "$CONTAINER_ID" 2>/dev/null || true
+
+echo "AppDir copied to $PROJECT_ROOT/AppDir"
+ls -la "$PROJECT_ROOT/AppDir/usr/bin/"
+
+# Step 3: Install appimagetool if needed
+echo "[3/4] Setting up appimagetool..."
+
+# Try system appimagetool first
+APPIMAGETOOL=$(command -v appimagetool || true)
+
+if [ -z "$APPIMAGETOOL" ]; then
+    echo "Installing appimagetool from package manager..."
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get update -qq && sudo apt-get install -y appimagetool || \
+            { echo "Failed to install appimagetool via apt-get"; exit 1; }
+    else
+        echo "Error: apt-get not found. Install appimagetool manually."
+        exit 1
+    fi
+    APPIMAGETOOL=$(command -v appimagetool)
 fi
 
-if [ -z "$APPIMAGETOOL" ] || [ ! -f "$APPIMAGETOOL" ]; then
-    echo "⚠ Warning: appimagetool not available."
-    echo "  You can create AppImage manually:"
-    echo "  mkdir -p $PROJECT_ROOT/artifacts && mv $PROJECT_ROOT/AppDir $PROJECT_ROOT/artifacts/"
-    echo "  Or install 'appimagetool' on your system."
-    exit 1
-fi
+echo "Using appimagetool: $APPIMAGETOOL"
 
 # Step 4: Create AppImage using appimagetool
 echo "[4/4] Creating AppImage using appimagetool..."
 mkdir -p "$PROJECT_ROOT/artifacts"
 
-if [ -z "$APPIMAGETOOL" ] || [ ! -f "$APPIMAGETOOL" ]; then
-    echo "❌ Error: appimagetool not found at $APPIMAGETOOL"
+if [ ! -d "$PROJECT_ROOT/AppDir" ]; then
+    echo "❌ Error: AppDir not found at $PROJECT_ROOT/AppDir"
     exit 1
 fi
 
-"$APPIMAGETOOL" "$PROJECT_ROOT/Cetus/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+"$APPIMAGETOOL" "$PROJECT_ROOT/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
 chmod +x "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
 
 echo ""
