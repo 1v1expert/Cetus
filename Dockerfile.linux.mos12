@@ -1,7 +1,8 @@
-# Dockerfile for building Cetus AppImage for МОС 12 (ALT Linux-based)
-# Usage: docker build -f Dockerfile.linux.mos12 -t cetus-mos12-appimage .
+# Dockerfile for building Cetus AppImage for Linux (Ubuntu 22.04 compatible with МОС 12)
+# Usage: docker build -f Dockerfile.linux.mos12 -t cetus-linux-appimage .
+# Note: Ubuntu 22.04 LTS packages are compatible with МОС 12 (ALT Linux-based)
 
-FROM altlinux:sisyphus
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /build
@@ -10,15 +11,20 @@ WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    qt5-base-devel \
-    qt5-declarative-devel \
-    qt5-tools-devel \
-    qt5-quickcontrols-devel \
-    libxkbcommon-devel \
-    libxkbcommon-x11-devel \
-    libGL-devel \
-    libxcb-devel \
-    libxkbfile-devel \
+    qt5-qmake \
+    qt5-default \
+    libqt5core5a \
+    libqt5gui5 \
+    libqt5widgets5 \
+    libqt5qml5 \
+    libqt5quick5 \
+    libqt5network5 \
+    qt5-image-formats-plugins \
+    libxkbcommon-dev \
+    libxkbcommon-x11-dev \
+    libgl1-mesa-dev \
+    libxcb-dev \
+    libxkbfile-dev \
     git \
     pkg-config \
     ca-certificates \
@@ -29,7 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libappimage-dev \
     appimage-builder \
     fuse \
-    fuse-devel \
+    libfuse-dev \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
 # Copy project files
@@ -41,7 +47,7 @@ RUN mkdir -p /build/Cetus/build-linux
 
 # Run qmake and build
 WORKDIR /build/Cetus/build-linux
-RUN /usr/lib64/qt5/bin/qmake ../Cetus.pro -r && make -j$(nproc)
+RUN qmake ../Cetus.pro -r && make -j$(nproc)
 
 # Create AppDir structure for AppImage
 RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
