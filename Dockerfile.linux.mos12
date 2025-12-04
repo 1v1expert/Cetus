@@ -12,18 +12,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     qt5-qmake \
-    qt5-default \
     libqt5core5a \
     libqt5gui5 \
     libqt5widgets5 \
     libqt5qml5 \
     libqt5quick5 \
     libqt5network5 \
+    libqt5dbus5 \
+    libqt5sql5 \
     qt5-image-formats-plugins \
     libxkbcommon-dev \
     libxkbcommon-x11-dev \
     libgl1-mesa-dev \
-    libxcb-dev \
+    libx11-dev \
     libxkbfile-dev \
     git \
     pkg-config \
@@ -32,11 +33,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     appstream \
     desktop-file-utils \
-    libappimage-dev \
-    appimage-builder \
+    libappimage0 \
     fuse \
     libfuse-dev \
+    file \
+    patchelf \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
+
+# Download and install appimagetool (AppImage creation tool)
+RUN wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool && \
+    chmod +x /usr/local/bin/appimagetool && \
+    /usr/local/bin/appimagetool --version || echo "appimagetool ready (may need FUSE to extract)"
 
 # Copy project files
 COPY . /build/Cetus
