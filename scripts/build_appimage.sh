@@ -91,6 +91,17 @@ if [ ! -d "$PROJECT_ROOT/Cetus/AppDir" ]; then
     exit 1
 fi
 
+# Ensure a .desktop file exists at AppDir root (some appimagetool builds require it)
+if ! ls "$PROJECT_ROOT/Cetus/AppDir"/*.desktop >/dev/null 2>&1; then
+    if [ -f "$PROJECT_ROOT/Cetus/AppDir/usr/share/applications/Cetus.desktop" ]; then
+        echo "Copying .desktop file to AppDir root..."
+        cp "$PROJECT_ROOT/Cetus/AppDir/usr/share/applications/Cetus.desktop" "$PROJECT_ROOT/Cetus/AppDir/Cetus.desktop"
+    else
+        echo "❌ No .desktop file found in AppDir or usr/share/applications. Aborting."
+        exit 1
+    fi
+fi
+
 # If appimagetool is an AppImage, we need to extract it or install FUSE
 if [[ "$APPIMAGETOOL" == *.AppImage ]]; then
     echo "Detected AppImage format. Attempting to extract and use binary..."
