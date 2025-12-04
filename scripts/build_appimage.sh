@@ -42,6 +42,15 @@ fi
 
 echo "✓ AppDir created successfully"
 ls -la "$PROJECT_ROOT/Cetus/AppDir/usr/bin/"
+echo ""
+echo "AppDir structure:"
+find "$PROJECT_ROOT/Cetus/AppDir" -type f -o -type d | head -50
+echo ""
+echo "Checking for required files:"
+[ -f "$PROJECT_ROOT/Cetus/AppDir/AppRun" ] && echo "✓ AppRun found" || echo "✗ AppRun missing"
+[ -f "$PROJECT_ROOT/Cetus/AppDir/usr/bin/Cetus" ] && echo "✓ Binary found" || echo "✗ Binary missing"
+[ -f "$PROJECT_ROOT/Cetus/AppDir/usr/share/applications/Cetus.desktop" ] && echo "✓ .desktop file found" || echo "✗ .desktop file missing"
+[ -d "$PROJECT_ROOT/Cetus/AppDir/usr/lib" ] && echo "✓ lib dir found" || echo "✗ lib dir missing"
 
 # Step 3: Install appimagetool if needed
 echo "[3/4] Setting up appimagetool..."
