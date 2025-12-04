@@ -48,28 +48,25 @@ if [ -z "$APPIMAGETOOL" ] || [ ! -f "$APPIMAGETOOL" ]; then
     exit 1
 fi
 
-# Step 4: Create AppImage using appimagetool on host
+# Step 4: Create AppImage using appimagetool
 echo "[4/4] Creating AppImage using appimagetool..."
 mkdir -p "$PROJECT_ROOT/artifacts"
-"$APPIMAGETOOL" "$PROJECT_ROOT/Cetus/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage" && \
-    chmod +x "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage" || \
-    { echo "Failed to create AppImage. Check appimagetool output above."; exit 1; }
+
+if [ -z "$APPIMAGETOOL" ] || [ ! -f "$APPIMAGETOOL" ]; then
+    echo "❌ Error: appimagetool not found at $APPIMAGETOOL"
+    exit 1
+fi
+
+"$APPIMAGETOOL" "$PROJECT_ROOT/Cetus/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+chmod +x "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
 
 echo ""
-if [ -f "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage" ]; then
-    ls -lh "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
-    echo ""
-    echo "✓ AppImage successfully created: $PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
-    echo ""
-    echo "To test on МОС 12 Linux:"
-    echo "  ./artifacts/Cetus-x86_64.AppImage"
-    echo ""
-    echo "To install system-wide (optional):"
-    echo "  sudo cp ./artifacts/Cetus-x86_64.AppImage /usr/local/bin/Cetus"
-    echo "  sudo chmod +x /usr/local/bin/Cetus"
-else
-    echo "⚠ Warning: AppImage not found at expected location."
-fi
+ls -lh "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+echo ""
+echo "✓ AppImage successfully created: $PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+echo ""
+echo "To test on МОС 12 Linux:"
+echo "  ./artifacts/Cetus-x86_64.AppImage"
 
 echo ""
 echo "=== Done ==="
