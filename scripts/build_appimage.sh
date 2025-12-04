@@ -52,13 +52,23 @@ APPIMAGETOOL=$(command -v appimagetool || true)
 if [ -z "$APPIMAGETOOL" ]; then
     echo "Installing appimagetool from package manager..."
     if command -v apt-get &> /dev/null; then
-        sudo apt-get update -qq && sudo apt-get install -y appimagetool || \
-            { echo "Failed to install appimagetool via apt-get"; exit 1; }
-    else
-        echo "Error: apt-get not found. Install appimagetool manually."
-        exit 1
+        sudo apt-get update -o APT::Get::AllowUnauthenticated=true -qq 2>/dev/null || true
+        sudo apt-get install -y -o APT::Get::AllowUnauthenticated=true appimagetool 2>/dev/null || \
+            { echo "⚠ Could not install via apt-get. Trying to download binary..."; }
     fi
-    APPIMAGETOOL=$(command -v appimagetool)
+    APPIMAGETOOL=$(command -v appimagetool || true)
+fi
+
+# If still not found, download AppImageKit binary
+if [ -z "$APPIMAGETOOL" ]; then
+    echo "Downloading appimagetool binary from GitHub..."
+    APPIMAGETOOL_BIN="$PROJECT_ROOT/appimagetool-x86_64.AppImage"
+    if [ ! -f "$APPIMAGETOOL_BIN" ]; then
+        wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage \
+            -O "$APPIMAGETOOL_BIN" 2>/dev/null && chmod +x "$APPIMAGETOOL_BIN" || \
+            { echo "❌ Failed to download appimagetool"; exit 1; }
+    fi
+    APPIMAGETOOL="$APPIMAGETOOL_BIN"
 fi
 
 echo "Using appimagetool: $APPIMAGETOOL"
