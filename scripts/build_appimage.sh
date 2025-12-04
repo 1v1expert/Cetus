@@ -19,22 +19,24 @@ docker build $NO_CACHE \
     -t cetus-linux-appimage:latest \
     "$PROJECT_ROOT"
 
-# Step 2: Run container and create AppDir
+# Step 2: Create AppDir inside container
 echo "[2/4] Creating AppDir inside container..."
-rm -rf "$PROJECT_ROOT/AppDir"
+rm -rf "$PROJECT_ROOT/Cetus/AppDir"
 
-# Run the image - it will build AppDir and output to mounted volume
-docker run --rm \
-    -v "$PROJECT_ROOT":/build \
-    cetus-linux-appimage:latest \
-    bash -c "
-        echo 'Verifying AppDir contents...'
-        ls -la /build/Cetus/AppDir/usr/bin/
-    "
+# Create a temporary container from the image (don't run, just create)
+# Then copy AppDir from it
+TEMP_CONTAINER=$(docker create cetus-linux-appimage:latest)
 
-# Verify AppDir was created
+# Copy AppDir from the built image
+echo "Copying AppDir from container image..."
+docker cp "$TEMP_CONTAINER":/build/Cetus/AppDir "$PROJECT_ROOT/Cetus/AppDir"
+
+# Remove temporary container
+docker rm "$TEMP_CONTAINER" > /dev/null
+
+# Verify AppDir was copied
 if [ ! -d "$PROJECT_ROOT/Cetus/AppDir" ]; then
-    echo "❌ Error: AppDir not created at $PROJECT_ROOT/Cetus/AppDir"
+    echo "❌ Error: AppDir not copied from container"
     exit 1
 fi
 
