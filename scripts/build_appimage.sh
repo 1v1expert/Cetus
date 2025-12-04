@@ -21,24 +21,25 @@ docker build $NO_CACHE \
 
 # Step 2: Run container and create AppDir
 echo "[2/4] Creating AppDir inside container..."
-CONTAINER_ID=$(docker run --rm -d \
+rm -rf "$PROJECT_ROOT/AppDir"
+
+# Run the image - it will build AppDir and output to mounted volume
+docker run --rm \
     -v "$PROJECT_ROOT":/build \
-    -w /build/Cetus \
     cetus-linux-appimage:latest \
-    bash -c "echo 'AppDir ready'; sleep infinity")
+    bash -c "
+        echo 'Verifying AppDir contents...'
+        ls -la /build/Cetus/AppDir/usr/bin/
+    "
 
-# Wait for container to be ready
-sleep 2
+# Verify AppDir was created
+if [ ! -d "$PROJECT_ROOT/Cetus/AppDir" ]; then
+    echo "❌ Error: AppDir not created at $PROJECT_ROOT/Cetus/AppDir"
+    exit 1
+fi
 
-# Copy AppDir from container to host
-echo "Copying AppDir from container..."
-docker cp "$CONTAINER_ID":/build/Cetus/AppDir "$PROJECT_ROOT/AppDir"
-
-# Stop container
-docker stop "$CONTAINER_ID" 2>/dev/null || true
-
-echo "AppDir copied to $PROJECT_ROOT/AppDir"
-ls -la "$PROJECT_ROOT/AppDir/usr/bin/"
+echo "✓ AppDir created successfully"
+ls -la "$PROJECT_ROOT/Cetus/AppDir/usr/bin/"
 
 # Step 3: Install appimagetool if needed
 echo "[3/4] Setting up appimagetool..."
@@ -64,12 +65,12 @@ echo "Using appimagetool: $APPIMAGETOOL"
 echo "[4/4] Creating AppImage using appimagetool..."
 mkdir -p "$PROJECT_ROOT/artifacts"
 
-if [ ! -d "$PROJECT_ROOT/AppDir" ]; then
-    echo "❌ Error: AppDir not found at $PROJECT_ROOT/AppDir"
+if [ ! -d "$PROJECT_ROOT/Cetus/AppDir" ]; then
+    echo "❌ Error: AppDir not found at $PROJECT_ROOT/Cetus/AppDir"
     exit 1
 fi
 
-"$APPIMAGETOOL" "$PROJECT_ROOT/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
+"$APPIMAGETOOL" "$PROJECT_ROOT/Cetus/AppDir" "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
 chmod +x "$PROJECT_ROOT/artifacts/Cetus-x86_64.AppImage"
 
 echo ""
