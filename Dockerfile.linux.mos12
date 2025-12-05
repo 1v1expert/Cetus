@@ -79,25 +79,10 @@ RUN mkdir -p /build/Cetus/AppDir/usr/lib/qt5 && \
 
 # Create .desktop file in usr/share/applications/
 RUN mkdir -p /build/Cetus/AppDir/usr/share/applications && \
-    cat > /build/Cetus/AppDir/usr/share/applications/Cetus.desktop <<'DESKTOP'
-[Desktop Entry]
-Type=Application
-Name=Cetus
-Comment=CNC Machine Control Application
-Exec=Cetus
-Icon=Cetus
-Categories=Utility;
-Terminal=false
-DESKTOP
+    printf '[Desktop Entry]\nType=Application\nName=Cetus\nComment=CNC Machine Control Application\nExec=Cetus\nIcon=Cetus\nCategories=Utility;\nTerminal=false\n' > /build/Cetus/AppDir/usr/share/applications/Cetus.desktop
 
 # Create AppRun script (required by AppImage format)
-RUN cat > /build/Cetus/AppDir/AppRun <<'APPRUN'
-#!/bin/bash
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"
-export QT_PLUGIN_PATH="$HERE/usr/lib/qt5/plugins"
-exec "$HERE/usr/bin/Cetus" "$@"
-APPRUN
+RUN printf '#!/bin/bash\nHERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\nexport LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"\nexport QT_PLUGIN_PATH="$HERE/usr/lib/qt5/plugins"\nexec "$HERE/usr/bin/Cetus" "$@"\n' > /build/Cetus/AppDir/AppRun
 
 # Set executable bits
 RUN chmod +x /build/Cetus/AppDir/AppRun && \
