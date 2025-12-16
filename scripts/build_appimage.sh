@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
-NO_CACHE="${1:---no-cache}"
+# NO_CACHE="${1:---no-cache}"
 
 echo "=== Building Cetus AppImage for МОС 12 ==="
 echo "Project root: $PROJECT_ROOT"
@@ -14,7 +14,11 @@ echo ""
 
 # Step 1: Build Docker image
 echo "[1/4] Building Docker image..."
-docker build $NO_CACHE \
+# docker build $NO_CACHE \
+#     -f "$PROJECT_ROOT/Dockerfile.linux.mos12" \
+#     -t cetus-linux-appimage:latest \
+#     "$PROJECT_ROOT"
+docker build \
     -f "$PROJECT_ROOT/Dockerfile.linux.mos12" \
     -t cetus-linux-appimage:latest \
     "$PROJECT_ROOT"
