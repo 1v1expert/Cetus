@@ -72,12 +72,13 @@ RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
 # Install linuxdeploy and Qt plugin
 RUN cd /tmp && \
     wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
-    wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage && \
-    chmod +x linuxdeploy*.AppImage && \
+    chmod +x linuxdeploy-x86_64.AppImage && \
     ./linuxdeploy-x86_64.AppImage --appimage-extract && \
-    ./linuxdeploy-plugin-qt-x86_64.AppImage --appimage-extract && \
     mv squashfs-root /linuxdeploy && \
-    mv squashfs-root-1 /linuxdeploy-plugin-qt
+    wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage && \
+    chmod +x linuxdeploy-plugin-qt-x86_64.AppImage && \
+    ./linuxdeploy-plugin-qt-x86_64.AppImage --appimage-extract && \
+    mv squashfs-root /linuxdeploy-plugin-qt
 
 # Use linuxdeploy to bundle all dependencies
 RUN cd /build/Cetus && \
