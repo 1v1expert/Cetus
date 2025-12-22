@@ -69,28 +69,35 @@ RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
 RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
     cp /build/Cetus/build-linux/Cetus /build/Cetus/AppDir/usr/bin/
 
-# Install linuxdeploy and Qt plugin
+# Install linuxdeploy
 RUN cd /tmp && \
     wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
     chmod +x linuxdeploy-x86_64.AppImage && \
     ./linuxdeploy-x86_64.AppImage --appimage-extract && \
-    mv squashfs-root /linuxdeploy && \
-    wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage && \
-    chmod +x linuxdeploy-plugin-qt-x86_64.AppImage && \
-    ./linuxdeploy-plugin-qt-x86_64.AppImage --appimage-extract && \
-    mv squashfs-root /linuxdeploy-plugin-qt
+    mv squashfs-root /linuxdeploy
 
-# Use linuxdeploy to bundle all dependencies
+# Copy Qt libraries and plugins manually
+RUN mkdir -p /build/Cetus/AppDir/usr/lib && \
+    ldd /build/Cetus/build-linux/Cetus | awk '{print $3}' | grep '^/' | xargs -I {} cp {} /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
+
+# Copy Qt plugins and QML
+RUN mkdir -p /build/Cetus/AppDir/usr/lib/qt5 && \
+    cp -r /usr/lib/x86_64-linux-gnu/qt5/plugins /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null && \
+    cp -r /usr/lib/x86_64-linux-gnu/qt5/qml /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null || true
+
+# Use linuxdeploy to finalize AppDir
 RUN cd /build/Cetus && \
     mkdir -p AppDir/usr/share/applications && \
     printf '[Desktop Entry]\nType=Application\nName=Cetus\nComment=CNC Machine Control Application\nExec=Cetus\nIcon=Cetus\nCategories=Utility;\nTerminal=false\n' > AppDir/usr/share/applications/Cetus.desktop && \
     printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > AppDir/Cetus.png && \
-    QMAKE=/usr/lib/qt5/bin/qmake \
+    cp AppDir/Cetus.png AppDir/.DirIcon && \
     /linuxdeploy/AppRun --appdir AppDir \
-    --executable build-linux/Cetus \
     --desktop-file AppDir/usr/share/applications/Cetus.desktop \
-    --icon-file AppDir/Cetus.png \
-    --plugin qt || true
+    --icon-file AppDir/Cetus.png || true
+
+# Create custom AppRun with Qt environment
+RUN printf '#!/bin/bash\nHERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\nexport LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"\nexport QT_PLUGIN_PATH="$HERE/usr/lib/qt5/plugins"\nexport QML2_IMPORT_PATH="$HERE/usr/lib/qt5/qml"\nexec "$HERE/usr/bin/Cetus" "$@"\n' > /build/Cetus/AppDir/AppRun && \
+    chmod +x /build/Cetus/AppDir/AppRun
 
 # Create default artifacts directory
 RUN mkdir -p /build/artifacts
