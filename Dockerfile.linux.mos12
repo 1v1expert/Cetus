@@ -77,7 +77,9 @@ RUN cd /tmp && \
 
 # Copy Qt libraries and plugins manually
 RUN mkdir -p /build/Cetus/AppDir/usr/lib && \
-    ldd /build/Cetus/build-linux/Cetus | awk '{print $3}' | grep '^/' | xargs -I {} cp {} /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
+    ldd /build/Cetus/build-linux/Cetus | awk '{print $3}' | grep '^/' | \
+    grep -v 'libc\|libm\|libpthread\|libdl\|librt\|libresolv\|libgcc_s\|libstdc++' | \
+    xargs -I {} cp {} /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
 
 # Copy Qt plugins and QML
 RUN mkdir -p /build/Cetus/AppDir/usr/lib/qt5 && \
