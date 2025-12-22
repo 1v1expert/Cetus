@@ -56,7 +56,7 @@ RUN mkdir -p /build/Cetus/build-linux
 
 # Run qmake and build
 WORKDIR /build/Cetus/build-linux
-RUN qmake ../Cetus.pro -r && make -j$(nproc)
+RUN /usr/lib/qt5/bin/qmake ../Cetus.pro -r && make -j$(nproc)
 
 # Create AppDir structure for AppImage
 RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
