@@ -65,36 +65,31 @@ RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
     mkdir -p /build/Cetus/AppDir/usr/share/applications && \
     mkdir -p /build/Cetus/AppDir/usr/share/pixmaps
 
-# Copy binary
-RUN cp /build/Cetus/build-linux/Cetus /build/Cetus/AppDir/usr/bin/
+# Copy binary to AppDir
+RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
+    cp /build/Cetus/build-linux/Cetus /build/Cetus/AppDir/usr/bin/
 
-# Copy runtime libraries (find and copy dependencies)
-RUN ldd /build/Cetus/build-linux/Cetus | awk '{print $3}' | grep '^/' | sort -u | xargs -I {} cp -v {} /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
+# Install linuxdeploy and Qt plugin
+RUN cd /tmp && \
+    wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
+    wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage && \
+    chmod +x linuxdeploy*.AppImage && \
+    ./linuxdeploy-x86_64.AppImage --appimage-extract && \
+    ./linuxdeploy-plugin-qt-x86_64.AppImage --appimage-extract && \
+    mv squashfs-root /linuxdeploy && \
+    mv squashfs-root-1 /linuxdeploy-plugin-qt
 
-# Copy Qt plugins and libraries
-RUN mkdir -p /build/Cetus/AppDir/usr/lib/qt5 && \
-    (cp -r /usr/lib/x86_64-linux-gnu/qt5/plugins /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null || \
-     cp -r /usr/lib64/qt5/plugins /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null || true) && \
-    find /usr/lib -name "libQt5*.so*" -exec cp -v {} /build/Cetus/AppDir/usr/lib/ \; 2>/dev/null || true
-
-# Copy QML modules (required for Qt Quick/QML apps)
-RUN (cp -r /usr/lib/x86_64-linux-gnu/qt5/qml /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null || \
-     cp -r /usr/lib64/qt5/qml /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null || true)
-
-# Create .desktop file in usr/share/applications/
-RUN mkdir -p /build/Cetus/AppDir/usr/share/applications && \
-    printf '[Desktop Entry]\nType=Application\nName=Cetus\nComment=CNC Machine Control Application\nExec=Cetus\nIcon=Cetus\nCategories=Utility;\nTerminal=false\n' > /build/Cetus/AppDir/usr/share/applications/Cetus.desktop
-
-# Create AppRun script (required by AppImage format)
-RUN printf '#!/bin/bash\nHERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\nexport LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"\nexport QT_PLUGIN_PATH="$HERE/usr/lib/qt5/plugins"\nexport QT_QPA_PLATFORM_PLUGIN_PATH="$HERE/usr/lib/qt5/plugins/platforms"\nexport QML2_IMPORT_PATH="$HERE/usr/lib/qt5/qml"\nexport QT_DEBUG_PLUGINS=1\nexport QT_LOGGING_RULES="*.debug=true"\necho "Starting Cetus from: $HERE"\necho "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"\necho "QT_PLUGIN_PATH: $QT_PLUGIN_PATH"\necho "QML2_IMPORT_PATH: $QML2_IMPORT_PATH"\nexec "$HERE/usr/bin/Cetus" "$@" 2>&1\n' > /build/Cetus/AppDir/AppRun
-
-# Create a minimal icon file (1x1 PNG) to satisfy appimagetool
-RUN printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > /build/Cetus/AppDir/Cetus.png
-
-# Set executable bits
-RUN chmod +x /build/Cetus/AppDir/AppRun && \
-    chmod +x /build/Cetus/AppDir/usr/bin/Cetus && \
-    chmod +x /build/Cetus/AppDir/usr/share/applications/Cetus.desktop
+# Use linuxdeploy to bundle all dependencies
+RUN cd /build/Cetus && \
+    mkdir -p AppDir/usr/share/applications && \
+    printf '[Desktop Entry]\nType=Application\nName=Cetus\nComment=CNC Machine Control Application\nExec=Cetus\nIcon=Cetus\nCategories=Utility;\nTerminal=false\n' > AppDir/usr/share/applications/Cetus.desktop && \
+    printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82' > AppDir/Cetus.png && \
+    QMAKE=/usr/lib/qt5/bin/qmake \
+    /linuxdeploy/AppRun --appdir AppDir \
+    --executable build-linux/Cetus \
+    --desktop-file AppDir/usr/share/applications/Cetus.desktop \
+    --icon-file AppDir/Cetus.png \
+    --plugin qt || true
 
 # Create default artifacts directory
 RUN mkdir -p /build/artifacts
