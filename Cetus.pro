@@ -32,7 +32,9 @@ android: {
 
 TRANSLATIONS_PATH = $$PWD/translations
 TRANSLATIONS_OUT_PATH = $$PWD/$$NAME/translations
-include(translation.pri)
+!contains(DEFINES, CETUS_NO_LINGUIST) {
+    include(translation.pri)
+}
 
 DISTFILES += \
     Cetus/CoolantControls.qml \

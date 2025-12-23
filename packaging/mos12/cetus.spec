@@ -19,7 +19,7 @@ mkdir -p build
 cd build
 QMAKE=qmake-qt5
 command -v "$QMAKE" >/dev/null 2>&1 || QMAKE=qmake
-"$QMAKE" ..
+"$QMAKE" "DEFINES+=CETUS_NO_LINGUIST" ..
 make %{?_smp_mflags}
 
 %install
@@ -27,8 +27,14 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_datadir}/applications
 mkdir -p %{buildroot}%{_datadir}/pixmaps
+mkdir -p %{buildroot}%{_datadir}/qt5/translations
 
 install -m 755 build/Cetus %{buildroot}%{_bindir}/Cetus
+
+# Ship prebuilt translations (avoids needing lupdate/lrelease during build)
+if ls -1 Cetus/translations/*.qm >/dev/null 2>&1; then
+	install -m 644 Cetus/translations/*.qm %{buildroot}%{_datadir}/qt5/translations/
+fi
 
 cat > %{buildroot}%{_datadir}/applications/Cetus.desktop << DESKTOP_EOF
 [Desktop Entry]
@@ -52,6 +58,7 @@ ICON_EOF
 %{_bindir}/Cetus
 %{_datadir}/applications/Cetus.desktop
 %{_datadir}/pixmaps/Cetus.svg
+%{_datadir}/qt5/translations/cetus_*.qm
 
 %changelog
 * Tue Dec 23 2025 Packager <packager@local> - 1.0-1
