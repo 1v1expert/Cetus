@@ -2,6 +2,7 @@ TEMPLATE = app
 NAME = Cetus
 
 QT += qml quick widgets
+CONFIG += static
 
 SOURCES += main.cpp
 
