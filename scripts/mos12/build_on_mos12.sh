@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build Cetus RPM on MOS 12 using the system toolchain (required for ABI/rpm compatibility).
-# Expected inputs (copied from mac):
-#   - Cetus-1.0.tar.gz
-#   - cetus.spec
+# Build Cetus RPM on MOS 12 using the MOS 12 toolchain.
+# This avoids ABI / rpm-feature mismatches (glibc, rpmlib capabilities).
 
 TARBALL=${1:-Cetus-1.0.tar.gz}
 SPEC=${2:-cetus.spec}
@@ -18,12 +16,69 @@ if [[ ! -f "$SPEC" ]]; then
   exit 1
 fi
 
+dnf_install_available() {
+  # Installs only packages that exist in enabled repos.
+  # Usage: dnf_install_available pkg1 pkg2 ...
+  local packages_to_install=()
+  local pkg
+  for pkg in "$@"; do
+    if dnf -q list --available "$pkg" >/dev/null 2>&1; then
+      packages_to_install+=("$pkg")
+    fi
+  done
+  if ((${#packages_to_install[@]} > 0)); then
+    dnf -y install "${packages_to_install[@]}"
+  fi
+}
+
+dnf_install_first_found() {
+  # Usage: dnf_install_first_found "label" pkgA pkgB ...
+  local label=$1
+  shift
+  local pkg
+  for pkg in "$@"; do
+    if dnf -q list --available "$pkg" >/dev/null 2>&1; then
+      echo "Installing $label: $pkg"
+      dnf -y install "$pkg"
+      return 0
+    fi
+  done
+  echo "WARN: could not find a package for: $label" >&2
+  return 1
+}
+
 echo "Installing build deps (dnf)..."
-# Package names vary between MOS builds; install the common Qt5 dev toolchain.
-# If some packages are not found, install the nearest equivalents from your MOS repo.
-dnf -y install rpm-build gcc-c++ make cmake git \
-  qt5-qtbase-devel qt5-qtdeclarative-devel qt5-qttools-devel qt5-qtquickcontrols2-devel \
-  libX11-devel libxcb-devel libxkbcommon-devel mesa-libGL-devel || true
+dnf -y makecache || true
+
+# rpmbuild must exist; fail hard if we can't install it.
+if ! command -v rpmbuild >/dev/null 2>&1; then
+  dnf_install_first_found "rpmbuild" rpm-build rpm-build-tools || true
+fi
+if ! command -v rpmbuild >/dev/null 2>&1; then
+  echo "ERROR: rpmbuild not found. Install package 'rpm-build' (or enable the MOS 12 repos that provide it)." >&2
+  exit 1
+fi
+
+# Toolchain (install what is available).
+dnf_install_available gcc-c++ g++ gcc make cmake git
+
+# Qt build deps: MOS 12 naming differs across repos/branches.
+# Try both ALT-style and Fedora-style names; install whichever exist.
+dnf_install_available \
+  qt5-base-devel qt5-qtbase-devel \
+  qt5-declarative-devel qt5-qtdeclarative-devel \
+  qt5-tools-devel qt5-qttools-devel qttools5-dev-tools \
+  qt5-quickcontrols2-devel qt5-qtquickcontrols2-devel qt5-qtquickcontrols2 \
+  qt5-qmake qt5-qmake-devel
+
+# X11 / OpenGL headers (install whatever exists)
+dnf_install_available libx11-devel libX11-devel libxcb-devel libxkbcommon-devel \
+  mesa-libGL-devel mesa-libgl-devel libGL-devel libglvnd-devel
+
+echo "Using rpmbuild: $(command -v rpmbuild)"
+echo "Using qmake candidates:"
+command -v qmake-qt5 >/dev/null 2>&1 && echo "  qmake-qt5: $(command -v qmake-qt5)" || true
+command -v qmake >/dev/null 2>&1 && echo "  qmake:     $(command -v qmake)" || true
 
 TOPDIR="$HOME/RPM"
 mkdir -p "$TOPDIR"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
@@ -32,10 +87,19 @@ cp -f "$TARBALL" "$TOPDIR/SOURCES/"
 cp -f "$SPEC" "$TOPDIR/SPECS/"
 
 echo "Building RPM via rpmbuild in $TOPDIR..."
+set +e
 rpmbuild --define "_topdir $TOPDIR" -ba "$TOPDIR/SPECS/$(basename "$SPEC")"
+status=$?
+set -e
+
+if [[ $status -ne 0 ]]; then
+  echo "ERROR: rpmbuild failed (exit $status)." >&2
+  echo "Tip: if you see a policy error like 'disallows root', run this script under a regular user (not root)." >&2
+  exit $status
+fi
 
 echo "Done. Built RPMs:"
-find "$TOPDIR/RPMS" -type f -name "*.rpm" -maxdepth 2 -print
+find "$TOPDIR/RPMS" -maxdepth 3 -type f -name "*.rpm" -print
 
 echo "Install example:"
 echo "  sudo dnf install $TOPDIR/RPMS/*/Cetus-*.rpm"
