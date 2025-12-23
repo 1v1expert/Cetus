@@ -123,8 +123,8 @@ RUN cd /build/Cetus && \
     --desktop-file AppDir/usr/share/applications/Cetus.desktop \
     --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg || true
 
-# Create custom AppRun with Qt environment (no double path)
-RUN printf '#!/bin/bash\nAPPDIR="$(dirname "$(readlink -f "$0")")"\nexport LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH"\nexport QT_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins"\nexport QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins/platforms"\nexport QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml"\nexec "$APPDIR/usr/bin/Cetus" "$@"\n' > /build/Cetus/AppDir/AppRun && \
+# Create robust AppRun with Qt environment (handles AppRun placed in /usr/bin inside AppImage)
+RUN printf '#!/bin/bash\nAPPDIR=$(dirname "$(readlink -f "$0")")\n# If AppRun resides in .../usr/bin, go two levels up\nif [[ "$APPDIR" == */usr/bin ]]; then APPDIR=$(dirname "$(dirname "$APPDIR")"); fi\nexport LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH"\nexport QT_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins"\nexport QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins/platforms"\nexport QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml"\nexec "$APPDIR/usr/bin/Cetus" "$@"\n' > /build/Cetus/AppDir/AppRun && \
     chmod +x /build/Cetus/AppDir/AppRun
 
 # Create default artifacts directory
