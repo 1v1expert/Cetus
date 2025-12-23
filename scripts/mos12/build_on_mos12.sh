@@ -22,12 +22,15 @@ dnf_install_available() {
   local packages_to_install=()
   local pkg
   for pkg in "$@"; do
-    if dnf -q list --available "$pkg" >/dev/null 2>&1; then
+    # Prefer x86_64 variants if present.
+    if [[ "${ARCH:-}" == "x86_64" ]] && dnf -q list --available "${pkg}.x86_64" >/dev/null 2>&1; then
+      packages_to_install+=("${pkg}.x86_64")
+    elif dnf -q list --available "$pkg" >/dev/null 2>&1; then
       packages_to_install+=("$pkg")
     fi
   done
   if ((${#packages_to_install[@]} > 0)); then
-    dnf -y install "${packages_to_install[@]}"
+    dnf "${DNF_INSTALL_FLAGS[@]}" install "${packages_to_install[@]}"
   fi
 }
 
@@ -37,9 +40,13 @@ dnf_install_first_found() {
   shift
   local pkg
   for pkg in "$@"; do
-    if dnf -q list --available "$pkg" >/dev/null 2>&1; then
+    if [[ "${ARCH:-}" == "x86_64" ]] && dnf -q list --available "${pkg}.x86_64" >/dev/null 2>&1; then
       echo "Installing $label: $pkg"
-      dnf -y install "$pkg"
+      dnf "${DNF_INSTALL_FLAGS[@]}" install "${pkg}.x86_64"
+      return 0
+    elif dnf -q list --available "$pkg" >/dev/null 2>&1; then
+      echo "Installing $label: $pkg"
+      dnf "${DNF_INSTALL_FLAGS[@]}" install "$pkg"
       return 0
     fi
   done
@@ -55,11 +62,16 @@ dnf_install_provider_of_file() {
 
   # dnf provides output differs across distros; we extract the first "name.arch" line.
   local provider
-  provider=$(dnf -q provides "$file_path" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.[A-Za-z0-9_]+[[:space:]]/{print $1; exit}')
+  if [[ "${ARCH:-}" == "x86_64" ]]; then
+    provider=$(dnf -q provides "$file_path" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.x86_64[[:space:]]/{print $1; exit}')
+  fi
+  if [[ -z "${provider:-}" ]]; then
+    provider=$(dnf -q provides "$file_path" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.[A-Za-z0-9_]+[[:space:]]/{print $1; exit}')
+  fi
 
   if [[ -n "$provider" ]]; then
     echo "Installing $label provider: $provider"
-    dnf -y install "$provider"
+    dnf "${DNF_INSTALL_FLAGS[@]}" install "$provider"
     return 0
   fi
 
@@ -73,11 +85,16 @@ dnf_install_provider_of_capability() {
   local label=${2:-capability}
 
   local provider
-  provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.[A-Za-z0-9_]+[[:space:]]/{print $1; exit}')
+  if [[ "${ARCH:-}" == "x86_64" ]]; then
+    provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.x86_64[[:space:]]/{print $1; exit}')
+  fi
+  if [[ -z "${provider:-}" ]]; then
+    provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.[A-Za-z0-9_]+[[:space:]]/{print $1; exit}')
+  fi
 
   if [[ -n "$provider" ]]; then
     echo "Installing $label provider: $provider"
-    dnf -y install "$provider"
+    dnf "${DNF_INSTALL_FLAGS[@]}" install "$provider"
     return 0
   fi
 
@@ -86,6 +103,25 @@ dnf_install_provider_of_capability() {
 
 echo "Installing build deps (dnf)..."
 dnf -y makecache || true
+
+ARCH=$(rpm --eval '%{_arch}' 2>/dev/null || uname -m)
+
+# Common flags for all installs. On x86_64 we avoid pulling 32-bit (-i686) packages,
+# because mixed *-devel multilib frequently conflicts on /usr/include/* headers.
+DNF_INSTALL_FLAGS=(-y --allowerasing)
+if [[ "$ARCH" == "x86_64" ]]; then
+  DNF_INSTALL_FLAGS+=(--exclude='*.i686')
+fi
+
+# MOS 12 may have some 32-bit (-i686) *-devel packages installed.
+# Those often conflict with 64-bit (-x86_64) *-devel packages on headers in /usr/include.
+# Example seen in the wild: lib64ffi-devel conflicts with libffi-devel.i686 on /usr/include/ffi.h.
+if [[ "$ARCH" == "x86_64" ]]; then
+  if rpm -q libffi-devel.i686 >/dev/null 2>&1; then
+    echo "Removing conflicting 32-bit package: libffi-devel.i686"
+    dnf -y remove libffi-devel.i686 || true
+  fi
+fi
 
 # rpmbuild must exist; fail hard if we can't install it.
 if ! command -v rpmbuild >/dev/null 2>&1; then
