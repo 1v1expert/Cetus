@@ -31,6 +31,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-dev \
     libx11-dev \
     libxkbfile-dev \
+    libxcb1 \
+    libxcb-render-util0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-randr0 \
+    libxcb-shape0 \
+    libxcb-xfixes0 \
+    libxcb-sync1 \
+    libxcb-xinerama0 \
+    libxrender1 \
+    libx11-xcb1 \
+    libxkbcommon0 \
+    libxkbcommon-x11-0 \
+    libxss1 \
+    libsm6 \
+    libice6 \
     git \
     pkg-config \
     ca-certificates \
@@ -81,6 +98,17 @@ RUN mkdir -p /build/Cetus/AppDir/usr/lib && \
     grep -v 'libc\|libm\|libpthread\|libdl\|librt\|libresolv\|libgcc_s\|libstdc++' | \
     xargs -I {} cp {} /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
 
+# Copy additional X11/xcb deps for qxcb plugin
+RUN mkdir -p /build/Cetus/AppDir/usr/lib && \
+    cp /usr/lib/x86_64-linux-gnu/libxcb*.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /lib/x86_64-linux-gnu/libxcb*.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libxkbcommon*.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libX11-xcb.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libXrender.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libXss.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libSM.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libICE.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
+
 # Copy Qt plugins and QML
 RUN mkdir -p /build/Cetus/AppDir/usr/lib/qt5 && \
     cp -r /usr/lib/x86_64-linux-gnu/qt5/plugins /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null && \
@@ -94,6 +122,10 @@ RUN cd /build/Cetus && \
     /linuxdeploy/AppRun --appdir AppDir \
     --desktop-file AppDir/usr/share/applications/Cetus.desktop \
     --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg || true
+
+# Create custom AppRun with Qt environment (no double path)
+RUN printf '#!/bin/bash\nAPPDIR="$(dirname "$(readlink -f "$0")")"\nexport LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH"\nexport QT_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins"\nexport QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins/platforms"\nexport QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml"\nexec "$APPDIR/usr/bin/Cetus" "$@"\n' > /build/Cetus/AppDir/AppRun && \
+    chmod +x /build/Cetus/AppDir/AppRun
 
 # Create default artifacts directory
 RUN mkdir -p /build/artifacts
