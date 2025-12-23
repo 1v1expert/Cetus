@@ -1,67 +1,11 @@
-# Dockerfile for building Cetus RPM package for MOS 12 (ALT Linux based)
-# Usage: docker build -f Dockerfile.mos12 -t cetus-mos12 .
-# Then: docker run --rm -v $(pwd)/artifacts:/artifacts cetus-mos12 cp /build/Cetus-*.rpm /artifacts/
+# Helper Dockerfile (optional): produces the MOS12 source bundle by running build_mos12.sh.
+#
+# IMPORTANT: do NOT use this image to build an installable MOS 12 RPM. Building on ALT Sisyphus
+# yields binaries requiring newer glibc/rpm than MOS 12 provides.
 
 FROM alt:sisyphus
 
-ENV LANG=ru_RU.UTF-8
-WORKDIR /build
+WORKDIR /work
+COPY . /work
 
-# Install build dependencies
-RUN dnf update -y && dnf install -y \
-    rpm-build \
-    qt5-qtbase-devel \
-    qt5-qtdeclarative-devel \
-    qt5-qttools-devel \
-    qt5-qtquickcontrols2-devel \
-    gcc-c++ \
-    cmake \
-    make \
-    git \
-    desktop-file-utils \
-    libX11-devel \
-    libxcb-devel \
-    libxkbcommon-devel \
-    mesa-libGL-devel \
-    && dnf clean all
-
-# Copy project files
-COPY . /build/Cetus
-WORKDIR /build/Cetus
-
-# Create RPM build structure
-RUN mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
-    cp -r . ~/rpmbuild/SOURCES/Cetus-1.0 && \
-    cd ~/rpmbuild/SOURCES && \
-    tar czf Cetus-1.0.tar.gz Cetus-1.0
-
-# Create a non-root user for RPM building
-RUN useradd -m -s /bin/bash builder
-
-# Switch to builder user and set up RPM build environment
-USER builder
-RUN mkdir -p ~/RPM/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
-    cp -r /build/Cetus ~/RPM/SOURCES/Cetus-1.0 && \
-    cd ~/RPM/SOURCES && \
-    tar czf Cetus-1.0.tar.gz Cetus-1.0
-
-# Check if qmake-qt5 is available
-RUN which qmake-qt5 || which qmake || echo "qmake not found, checking alternatives..." && \
-    find /usr -name "*qmake*" 2>/dev/null || echo "No qmake found" && \
-    ls -la /usr/bin/qt* || echo "No Qt tools found"
-
-# Create RPM spec file
-RUN printf 'Name:           Cetus\nVersion:        1.0\nRelease:        1%%{?dist}\nSummary:        CNC Machine Control Application\nGroup:          Applications/Engineering\nLicense:        GPL\nURL:            https://github.com/your-repo/cetus\nSource0:        %%{name}-%%{version}.tar.gz\n\nBuildRequires:  qt5-qtbase-devel\nBuildRequires:  qt5-qtdeclarative-devel\nBuildRequires:  gcc-c++\nBuildRequires:  make\nRequires:       qt5-qtbase\nRequires:       qt5-qtdeclarative\n\n%%description\nCNC Machine Control Application built with Qt/QML\n\n%%prep\n%%setup -q\n\n%%build\nmkdir -p build\ncd build\nqmake-qt5 ..\nmake %%{?_smp_mflags}\n\n%%install\nrm -rf %%{buildroot}\nmkdir -p %%{buildroot}%%{_bindir}\nmkdir -p %%{buildroot}%%{_datadir}/applications\nmkdir -p %%{buildroot}%%{_datadir}/pixmaps\n\ninstall -m 755 build/%%{name} %%{buildroot}%%{_bindir}/%%{name}\n\n# Desktop file\ncat > %%{buildroot}%%{_datadir}/applications/%%{name}.desktop << DESKTOP_EOF\n[Desktop Entry]\nType=Application\nName=Cetus\nComment=CNC Machine Control Application\nExec=%%{name}\nIcon=%%{name}\nCategories=Utility;\nTerminal=false\nDESKTOP_EOF\n\n# Icon (simple SVG)\ncat > %%{buildroot}%%{_datadir}/pixmaps/%%{name}.svg << ICON_EOF\n<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">\n<rect width="256" height="256" fill="#4a90e2"/>\n<text x="128" y="140" font-size="120" text-anchor="middle" fill="white">C</text>\n</svg>\nICON_EOF\n\n%%files\n%%{_bindir}/%%{name}\n%%{_datadir}/applications/%%{name}.desktop\n%%{_datadir}/pixmaps/%%{name}.svg\n\n%%changelog\n* Mon Dec 23 2024 Your Name <your@email.com> - 1.0-1\n- Initial package\n' > ~/RPM/SPECS/cetus.spec
-
-# Build the RPM package
-RUN cd ~/RPM/SPECS && \
-    rpmbuild -ba cetus.spec || (echo "RPM build failed, checking logs..." && cat /home/builder/RPM/BUILD/*/build.log 2>/dev/null || echo "No build log found" && exit 1)
-
-# Switch back to root to copy artifacts
-USER root
-
-# Copy the built RPM to artifacts
-RUN mkdir -p /artifacts && \
-    cp /home/builder/RPM/RPMS/x86_64/Cetus-*.rpm /artifacts/
-
-CMD ["bash"]
+CMD ["bash", "-lc", "./build_mos12.sh"]

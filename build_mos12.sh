@@ -1,18 +1,33 @@
-#!/bin/bash
-# Build script for Cetus on MOS 12
+#!/usr/bin/env bash
+# Prepare a MOS 12-buildable source bundle (tarball + spec).
+#
+# Why this exists:
+# RPMs built in ALT Sisyphus (or other newer distros) often REQUIRE newer glibc/rpm
+# than MOS 12 provides (e.g. GLIBC_2.34, rpmlib(SetVersions), rpmlib(PayloadIsLzma)).
+# The reliable solution is: build the binary RPM on MOS 12 itself.
 
-set -e
+set -euo pipefail
 
-echo "Building Cetus RPM for MOS 12..."
+VERSION=1.0
+NAME=Cetus
+OUT_DIR="artifacts/mos12-src"
 
-# Create artifacts directory
-mkdir -p artifacts
+echo "Preparing source bundle for MOS 12 build..."
+rm -rf "$OUT_DIR"
+mkdir -p "$OUT_DIR"
 
-# Build the Docker image and create RPM
-docker build -f Dockerfile.mos12 -t cetus-mos12 .
+# Create a clean source tarball
+tar --exclude='./artifacts' --exclude='./.git' --exclude='./build-*' \
+	-czf "$OUT_DIR/${NAME}-${VERSION}.tar.gz" .
 
-# Extract the RPM from the container
-docker run --rm -v $(pwd)/artifacts:/host-artifacts cetus-mos12 cp /artifacts/Cetus-*.rpm /host-artifacts/
+cp -f "packaging/mos12/cetus.spec" "$OUT_DIR/cetus.spec"
+cp -f "scripts/mos12/build_on_mos12.sh" "$OUT_DIR/build_on_mos12.sh"
+chmod +x "$OUT_DIR/build_on_mos12.sh"
 
-echo "RPM package created in artifacts/ directory"
-echo "To install on MOS 12: dnf install ./Cetus-*.rpm"
+echo "Created: $OUT_DIR/${NAME}-${VERSION}.tar.gz"
+echo "Created: $OUT_DIR/cetus.spec"
+echo "Created: $OUT_DIR/build_on_mos12.sh"
+echo
+echo "Next (on MOS 12 machine):"
+echo "  cd <folder_with_bundle>"
+echo "  ./build_on_mos12.sh ${NAME}-${VERSION}.tar.gz cetus.spec"
