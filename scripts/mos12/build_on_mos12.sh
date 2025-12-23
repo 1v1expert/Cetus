@@ -22,11 +22,20 @@ dnf_install_available() {
   local packages_to_install=()
   local pkg
   for pkg in "$@"; do
-    # Prefer x86_64 variants if present.
-    if [[ "${ARCH:-}" == "x86_64" ]] && dnf -q list --available "${pkg}.x86_64" >/dev/null 2>&1; then
-      packages_to_install+=("${pkg}.x86_64")
-    elif dnf -q list --available "$pkg" >/dev/null 2>&1; then
-      packages_to_install+=("$pkg")
+    if [[ "${ARCH:-}" == "x86_64" ]]; then
+      # Only install variants that can exist alongside --exclude=*.i686.
+      if dnf -q list --available "${pkg}.x86_64" >/dev/null 2>&1; then
+        packages_to_install+=("${pkg}.x86_64")
+      elif dnf -q list --available "${pkg}.noarch" >/dev/null 2>&1; then
+        packages_to_install+=("${pkg}.noarch")
+      else
+        # Likely i686-only or not present; skip silently.
+        :
+      fi
+    else
+      if dnf -q list --available "$pkg" >/dev/null 2>&1; then
+        packages_to_install+=("$pkg")
+      fi
     fi
   done
   if ((${#packages_to_install[@]} > 0)); then
@@ -43,6 +52,10 @@ dnf_install_first_found() {
     if [[ "${ARCH:-}" == "x86_64" ]] && dnf -q list --available "${pkg}.x86_64" >/dev/null 2>&1; then
       echo "Installing $label: $pkg"
       dnf "${DNF_INSTALL_FLAGS[@]}" install "${pkg}.x86_64"
+      return 0
+    elif [[ "${ARCH:-}" == "x86_64" ]] && dnf -q list --available "${pkg}.noarch" >/dev/null 2>&1; then
+      echo "Installing $label: $pkg"
+      dnf "${DNF_INSTALL_FLAGS[@]}" install "${pkg}.noarch"
       return 0
     elif dnf -q list --available "$pkg" >/dev/null 2>&1; then
       echo "Installing $label: $pkg"
@@ -66,6 +79,11 @@ dnf_install_provider_of_file() {
     provider=$(dnf -q provides "$file_path" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.x86_64[[:space:]]/{print $1; exit}')
   fi
   if [[ -z "${provider:-}" ]]; then
+    if [[ "${ARCH:-}" == "x86_64" ]]; then
+      provider=$(dnf -q provides "$file_path" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.noarch[[:space:]]/{print $1; exit}')
+    fi
+  fi
+  if [[ -z "${provider:-}" ]]; then
     provider=$(dnf -q provides "$file_path" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.[A-Za-z0-9_]+[[:space:]]/{print $1; exit}')
   fi
 
@@ -87,6 +105,11 @@ dnf_install_provider_of_capability() {
   local provider
   if [[ "${ARCH:-}" == "x86_64" ]]; then
     provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.x86_64[[:space:]]/{print $1; exit}')
+  fi
+  if [[ -z "${provider:-}" ]]; then
+    if [[ "${ARCH:-}" == "x86_64" ]]; then
+      provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.noarch[[:space:]]/{print $1; exit}')
+    fi
   fi
   if [[ -z "${provider:-}" ]]; then
     provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.[A-Za-z0-9_]+[[:space:]]/{print $1; exit}')
