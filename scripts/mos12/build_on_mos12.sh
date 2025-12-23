@@ -217,8 +217,9 @@ for candidate in "${QMAKE_CANDIDATES[@]}"; do
 done
 
 if [[ -z "$QMAKE_BIN" ]]; then
-  echo "No working qmake found; trying to install qt5-mkspecs..."
-  dnf_install_available qt5-mkspecs qt5-qtbase-mkspecs qt5-base-mkspecs libqt5-mkspecs
+  echo "No working qmake found; trying to install qt5-mkspecs and qt5-base..."
+  dnf_install_available qt5-mkspecs qt5-qtbase-mkspecs qt5-base-mkspecs libqt5-mkspecs \
+    qt5-base qt5-qtbase libqt5-base
   # Retry qmake selection
   for candidate in "${QMAKE_CANDIDATES[@]}"; do
     echo "Retesting qmake candidate: $candidate"
