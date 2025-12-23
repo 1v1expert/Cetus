@@ -226,6 +226,17 @@ dnf_install_provider_of_capability "pkgconfig(Qt5Quick)" "Qt5Quick" || true
 # QuickControls2 is optional depending on QML imports, but try if available.
 dnf_install_provider_of_capability "pkgconfig(Qt5QuickControls2)" "Qt5QuickControls2" || true
 
+# Fallback: if Qt5Core pkg-config is still not found, try installing common Qt5 devel packages by name.
+# This handles cases where capabilities are not advertised or repos have different naming.
+if command -v pkg-config >/dev/null 2>&1 && ! pkg-config --exists Qt5Core 2>/dev/null; then
+  echo "Qt5Core pkg-config not found after provider installs; trying fallback Qt5 devel packages..."
+  dnf_install_available \
+    qt5-base-devel qt5-qtbase-devel libqt5-base-devel qt5-devel qt-devel \
+    qt5-declarative-devel qt5-qtdeclarative-devel libqt5-declarative-devel \
+    qt5-tools-devel qt5-qttools-devel libqt5-tools-devel \
+    qt5-quickcontrols2-devel qt5-qtquickcontrols2-devel libqt5-quickcontrols2-devel
+fi
+
 if ! command -v lupdate >/dev/null 2>&1; then
   echo "WARN: lupdate not found (OK for MOS 12 build: CETUS_NO_LINGUIST disables translation rebuild)." >&2
 fi
