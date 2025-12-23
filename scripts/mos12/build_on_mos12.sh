@@ -209,8 +209,25 @@ if "$QMAKE_BIN" -query QT_VERSION >/dev/null 2>&1; then
   echo "Qt version: $($QMAKE_BIN -query QT_VERSION)"
   echo "QT_INSTALL_PREFIX: $($QMAKE_BIN -query QT_INSTALL_PREFIX 2>/dev/null || true)"
   echo "QT_INSTALL_LIBS:   $($QMAKE_BIN -query QT_INSTALL_LIBS 2>/dev/null || true)"
+  echo "QT_INSTALL_MKSPECS: $($QMAKE_BIN -query QT_INSTALL_MKSPECS 2>/dev/null || true)"
 else
   echo "WARN: '$QMAKE_BIN -query' failed; Qt installation may be incomplete." >&2
+fi
+
+# Debug: check if Qt5 mkspecs modules are present
+echo "Checking Qt5 mkspecs modules..."
+MKSPECS_DIR=$("$QMAKE_BIN" -query QT_INSTALL_MKSPECS 2>/dev/null || echo "")
+if [[ -n "$MKSPECS_DIR" && -d "$MKSPECS_DIR/modules" ]]; then
+  echo "Qt5 modules dir: $MKSPECS_DIR/modules"
+  if [[ -f "$MKSPECS_DIR/modules/qt_lib_core.pri" ]]; then
+    echo "qt_lib_core.pri found"
+  else
+    echo "WARN: qt_lib_core.pri not found in $MKSPECS_DIR/modules"
+    echo "Contents of modules dir (first 5):"
+    ls -la "$MKSPECS_DIR/modules" | head -5 || true
+  fi
+else
+  echo "WARN: QT_INSTALL_MKSPECS not set or modules dir missing"
 fi
 
 # Ensure Qt5 module development packages exist. The error you got:
