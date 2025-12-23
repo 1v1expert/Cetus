@@ -117,31 +117,36 @@ RUN mkdir -p /build/Cetus/AppDir/usr/lib/qt5 && \
     cp -r /usr/lib/x86_64-linux-gnu/qt5/plugins /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null && \
     cp -r /usr/lib/x86_64-linux-gnu/qt5/qml /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null || true
 
-# Use linuxdeploy to finalize AppDir
+# Create Desktop Entry and Icon
 RUN cd /build/Cetus && \
     mkdir -p AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/scalable/apps && \
     printf '[Desktop Entry]\nType=Application\nName=Cetus\nComment=CNC Machine Control Application\nExec=Cetus\nIcon=Cetus\nCategories=Utility;\nTerminal=false\n' > AppDir/usr/share/applications/Cetus.desktop && \
-    printf '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#4a90e2"/><text x="128" y="140" font-size="120" text-anchor="middle" fill="white">C</text></svg>' > AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg && \
-    /linuxdeploy/AppRun --appdir AppDir \
-    --desktop-file AppDir/usr/share/applications/Cetus.desktop \
-    --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg || true
+    printf '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#4a90e2"/><text x="128" y="140" font-size="120" text-anchor="middle" fill="white">C</text></svg>' > AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg
 
-# Create robust AppRun with Qt environment (handles AppRun placed in /usr/bin inside AppImage)
-RUN cat > /build/Cetus/AppDir/AppRun << 'EOF' && chmod +x /build/Cetus/AppDir/AppRun
+# Create AppRun script with proper Qt environment setup
+RUN cat > /build/Cetus/AppDir/AppRun << 'APPRUN_EOF' && chmod +x /build/Cetus/AppDir/AppRun
 #!/bin/bash
-APPDIR="$(cd "$(dirname "$0")" && pwd)"
-exec env LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH" \
-    QT_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins" \
-    QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins/platforms" \
-    QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml" \
-    "$APPDIR/usr/bin/Cetus" "$@"
-EOF
+# Determine APPDIR - the directory where AppRun is located
+export APPDIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Create default artifacts directory
-RUN mkdir -p /build/artifacts
+# Set up Qt environment variables for AppImage
+export LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH"
+export QT_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins/platforms"
+export QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml"
+
+# Execute the application
+exec "$APPDIR/usr/bin/Cetus" "$@"
+APPRUN_EOF
+
+# Install appimagetool and create the final AppImage
+RUN cd /tmp && \
+    wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage && \
+    chmod +x appimagetool-x86_64.AppImage && \
+    mkdir -p /build/artifacts && \
+    ./appimagetool-x86_64.AppImage /build/Cetus/AppDir /build/artifacts/Cetus-x86_64.AppImage
 
 # Output message
-RUN echo "AppDir ready at /build/Cetus/AppDir. Use AppImageKit or appimagetool to create the AppImage." && \
-    echo "Command: appimagetool /build/Cetus/AppDir /build/artifacts/Cetus-x86_64.AppImage"
+RUN echo "AppImage created at /build/artifacts/Cetus-x86_64.AppImage"
 
 CMD ["/bin/bash"]
