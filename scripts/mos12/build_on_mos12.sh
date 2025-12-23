@@ -47,6 +47,25 @@ dnf_install_first_found() {
   return 1
 }
 
+dnf_install_provider_of_file() {
+  # Usage: dnf_install_provider_of_file "/usr/bin/qmake" "label"
+  # Attempts to install the first package that provides the given file.
+  local file_path=$1
+  local label=${2:-provider}
+
+  # dnf provides output differs across distros; we extract the first "name.arch" line.
+  local provider
+  provider=$(dnf -q provides "$file_path" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.[A-Za-z0-9_]+[[:space:]]/{print $1; exit}')
+
+  if [[ -n "$provider" ]]; then
+    echo "Installing $label provider: $provider"
+    dnf -y install "$provider"
+    return 0
+  fi
+
+  return 1
+}
+
 echo "Installing build deps (dnf)..."
 dnf -y makecache || true
 
@@ -74,6 +93,29 @@ dnf_install_available \
 # X11 / OpenGL headers (install whatever exists)
 dnf_install_available libx11-devel libxcb-devel libxkbcommon-devel \
   mesa-libGL-devel mesa-libgl-devel libGL-devel libglvnd-devel
+
+# Ensure qmake exists (some MOS repos ship it under different package names).
+if ! command -v qmake-qt5 >/dev/null 2>&1 && ! command -v qmake >/dev/null 2>&1; then
+  echo "qmake not found after initial deps install; trying to discover provider..."
+
+  # Common paths; try both.
+  dnf_install_provider_of_file "*/qmake" "qmake" || true
+  dnf_install_provider_of_file "/usr/bin/qmake" "qmake" || true
+  dnf_install_provider_of_file "/usr/bin/qmake-qt5" "qmake-qt5" || true
+
+  # Last resort: try a few very common names.
+  dnf_install_available qt5-qmake qt5-qmake-devel qt-qmake qt-qmake-devel qtbase5-dev-tools || true
+fi
+
+if ! command -v qmake-qt5 >/dev/null 2>&1 && ! command -v qmake >/dev/null 2>&1; then
+  echo "ERROR: qmake was not found and could not be installed from enabled repos." >&2
+  echo "Please enable the MOS 12 repository that contains Qt development packages." >&2
+  echo "Useful commands to diagnose on MOS 12:" >&2
+  echo "  dnf repolist" >&2
+  echo "  dnf search qmake" >&2
+  echo "  dnf provides '*/qmake'" >&2
+  exit 1
+fi
 
 echo "Using rpmbuild: $(command -v rpmbuild)"
 echo "Using qmake candidates:"
