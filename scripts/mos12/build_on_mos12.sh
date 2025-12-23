@@ -117,10 +117,35 @@ if ! command -v qmake-qt5 >/dev/null 2>&1 && ! command -v qmake >/dev/null 2>&1;
   exit 1
 fi
 
+# translation.pri runs lupdate at qmake-time; ensure lupdate/lrelease exist.
+if ! command -v lupdate >/dev/null 2>&1; then
+  echo "lupdate not found; trying to discover provider..."
+  dnf_install_provider_of_file "*/lupdate" "lupdate" || true
+  dnf_install_provider_of_file "/usr/bin/lupdate" "lupdate" || true
+fi
+
+if ! command -v lrelease >/dev/null 2>&1; then
+  echo "lrelease not found; trying to discover provider..."
+  dnf_install_provider_of_file "*/lrelease" "lrelease" || true
+  dnf_install_provider_of_file "/usr/bin/lrelease" "lrelease" || true
+fi
+
+if ! command -v lupdate >/dev/null 2>&1 || ! command -v lrelease >/dev/null 2>&1; then
+  echo "ERROR: Qt translation tools are missing (lupdate/lrelease)." >&2
+  echo "They are usually provided by a Qt tools package (qttools / qt5-tools / qt5-qttools)." >&2
+  echo "Diagnostic commands:" >&2
+  echo "  dnf provides '*/lupdate'" >&2
+  echo "  dnf provides '*/lrelease'" >&2
+  exit 1
+fi
+
 echo "Using rpmbuild: $(command -v rpmbuild)"
 echo "Using qmake candidates:"
 command -v qmake-qt5 >/dev/null 2>&1 && echo "  qmake-qt5: $(command -v qmake-qt5)" || true
 command -v qmake >/dev/null 2>&1 && echo "  qmake:     $(command -v qmake)" || true
+echo "Using Qt translation tools:"
+echo "  lupdate:   $(command -v lupdate)"
+echo "  lrelease:  $(command -v lrelease)"
 
 TOPDIR="$HOME/RPM"
 mkdir -p "$TOPDIR"/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
