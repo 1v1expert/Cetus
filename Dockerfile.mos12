@@ -36,11 +36,16 @@ RUN mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
     tar czf Cetus-1.0.tar.gz Cetus-1.0
 
 # Create a non-root user for RPM building
-RUN useradd -m -s /bin/bash builder && \
-    chown -R builder:builder ~/rpmbuild
+RUN useradd -m -s /bin/bash builder
 
-# Switch to builder user and create RPM spec file
+# Switch to builder user and set up RPM build environment
 USER builder
+RUN mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
+    cp -r /build/Cetus ~/rpmbuild/SOURCES/Cetus-1.0 && \
+    cd ~/rpmbuild/SOURCES && \
+    tar czf Cetus-1.0.tar.gz Cetus-1.0
+
+# Create RPM spec file
 RUN cat > ~/rpmbuild/SPECS/cetus.spec << 'EOF'
 Name:           Cetus
 Version:        1.0
