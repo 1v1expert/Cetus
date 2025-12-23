@@ -127,7 +127,7 @@ RUN cd /build/Cetus && \
     --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg || true
 
 # Create robust AppRun with Qt environment (handles AppRun placed in /usr/bin inside AppImage)
-RUN cat > /build/Cetus/AppDir/AppRun << 'EOF'
+RUN cat > /build/Cetus/AppDir/AppRun << 'EOF' && chmod +x /build/Cetus/AppDir/AppRun
 #!/bin/bash
 APPDIR="$(cd "$(dirname "$0")" && pwd)"
 exec env LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH" \
@@ -136,7 +136,6 @@ exec env LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH" \
     QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml" \
     "$APPDIR/usr/bin/Cetus" "$@"
 EOF
-chmod +x /build/Cetus/AppDir/AppRun
 
 # Create default artifacts directory
 RUN mkdir -p /build/artifacts
