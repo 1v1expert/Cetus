@@ -1,8 +1,8 @@
-# Dockerfile for building Cetus RPM package for MOS 12
+# Dockerfile for building Cetus RPM package for MOS 12 (ALT Linux based)
 # Usage: docker build -f Dockerfile.mos12 -t cetus-mos12 .
 # Then: docker run --rm -v $(pwd)/artifacts:/artifacts cetus-mos12 cp /build/Cetus-*.rpm /artifacts/
 
-FROM altlinux/mos12:latest
+FROM alt:sisyphus
 
 ENV LANG=ru_RU.UTF-8
 WORKDIR /build
@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
     libxcb-devel \
     libxkbcommon-devel \
     libglvnd-devel \
-    && rm -rf /var/cache/apt
+    && apt-get clean
 
 # Copy project files
 COPY . /build/Cetus
