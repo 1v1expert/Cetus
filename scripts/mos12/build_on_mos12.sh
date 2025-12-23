@@ -197,10 +197,29 @@ if ! command -v qmake-qt5 >/dev/null 2>&1 && ! command -v qmake >/dev/null 2>&1;
   exit 1
 fi
 
-# Pick qmake (prefer qmake-qt5) and print info.
-QMAKE_BIN=$(command -v qmake-qt5 2>/dev/null || command -v qmake 2>/dev/null || true)
+# Pick qmake (prefer the one with working mkspecs)
+QMAKE_CANDIDATES=()
+command -v qmake-qt5 >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake-qt5")
+command -v qmake >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake")
+command -v qmake5 >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake5")
+
+QMAKE_BIN=""
+for candidate in "${QMAKE_CANDIDATES[@]}"; do
+  echo "Testing qmake candidate: $candidate"
+  MKSPECS_DIR=$("$candidate" -query QT_INSTALL_MKSPECS 2>/dev/null || echo "")
+  if [[ -n "$MKSPECS_DIR" && -d "$MKSPECS_DIR/modules" && -f "$MKSPECS_DIR/modules/qt_lib_core.pri" ]]; then
+    echo "Selected qmake: $candidate (mkspecs found at $MKSPECS_DIR)"
+    QMAKE_BIN="$candidate"
+    break
+  else
+    echo "Rejected $candidate: mkspecs missing or incomplete"
+  fi
+done
+
 if [[ -z "$QMAKE_BIN" ]]; then
-  echo "ERROR: internal: qmake detection failed." >&2
+  echo "ERROR: No working qmake found with Qt5 mkspecs/modules." >&2
+  echo "Qt5 devel packages may be incomplete or misconfigured." >&2
+  echo "Try installing qt5-qtbase-devel or qt5-mkspecs explicitly." >&2
   exit 1
 fi
 
