@@ -1,0 +1,118 @@
+# Dockerfile for building Cetus RPM package for MOS 12
+# Usage: docker build -f Dockerfile.mos12 -t cetus-mos12 .
+# Then: docker run --rm -v $(pwd)/artifacts:/artifacts cetus-mos12 cp /build/Cetus-*.rpm /artifacts/
+
+FROM altlinux/mos12:latest
+
+ENV LANG=ru_RU.UTF-8
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    rpm-build \
+    qt5-base-devel \
+    qt5-declarative-devel \
+    qt5-tools \
+    qt5-quickcontrols2 \
+    gcc-c++ \
+    cmake \
+    make \
+    git \
+    desktop-file-utils \
+    libX11-devel \
+    libxcb-devel \
+    libxkbcommon-devel \
+    libglvnd-devel \
+    && rm -rf /var/cache/apt
+
+# Copy project files
+COPY . /build/Cetus
+WORKDIR /build/Cetus
+
+# Create RPM build structure
+RUN mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
+    cp -r . ~/rpmbuild/SOURCES/Cetus-1.0 && \
+    cd ~/rpmbuild/SOURCES && \
+    tar czf Cetus-1.0.tar.gz Cetus-1.0
+
+# Create RPM spec file
+RUN cat > ~/rpmbuild/SPECS/cetus.spec << 'EOF'
+Name:           Cetus
+Version:        1.0
+Release:        1%{?dist}
+Summary:        CNC Machine Control Application
+License:        GPL
+URL:            https://github.com/your-repo/cetus
+Source0:        %{name}-%{version}.tar.gz
+
+BuildRequires:  qt5-base-devel
+BuildRequires:  qt5-declarative-devel
+BuildRequires:  qt5-tools
+BuildRequires:  qt5-quickcontrols2
+BuildRequires:  gcc-c++
+BuildRequires:  cmake
+BuildRequires:  make
+BuildRequires:  desktop-file-utils
+Requires:       qt5-base
+Requires:       qt5-declarative
+Requires:       qt5-quickcontrols2
+
+%description
+CNC Machine Control Application built with Qt/QML
+
+%prep
+%setup -q
+
+%build
+mkdir -p build
+cd build
+qmake-qt5 ..
+make %{?_smp_mflags}
+
+%install
+rm -rf %{buildroot}
+mkdir -p %{buildroot}%{_bindir}
+mkdir -p %{buildroot}%{_datadir}/applications
+mkdir -p %{buildroot}%{_datadir}/pixmaps
+
+install -m 755 build/%{name} %{buildroot}%{_bindir}/%{name}
+
+# Desktop file
+cat > %{buildroot}%{_datadir}/applications/%{name}.desktop << DESKTOP_EOF
+[Desktop Entry]
+Type=Application
+Name=Cetus
+Comment=CNC Machine Control Application
+Exec=%{name}
+Icon=%{name}
+Categories=Utility;
+Terminal=false
+DESKTOP_EOF
+
+# Icon (simple SVG)
+cat > %{buildroot}%{_datadir}/pixmaps/%{name}.svg << ICON_EOF
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
+<rect width="256" height="256" fill="#4a90e2"/>
+<text x="128" y="140" font-size="120" text-anchor="middle" fill="white">C</text>
+</svg>
+ICON_EOF
+
+%files
+%{_bindir}/%{name}
+%{_datadir}/applications/%{name}.desktop
+%{_datadir}/pixmaps/%{name}.svg
+
+%changelog
+* $(date +"%a %b %d %Y") Your Name <your@email.com> - 1.0-1
+- Initial package
+EOF
+
+# Build the RPM package
+RUN cd ~/rpmbuild/SPECS && \
+    rpmbuild -ba cetus.spec
+
+# Copy the built RPM to artifacts
+RUN mkdir -p /artifacts && \
+    cp ~/rpmbuild/RPMS/x86_64/Cetus-*.rpm /artifacts/
+
+CMD ["bash"]
