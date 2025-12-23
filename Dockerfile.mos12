@@ -35,7 +35,12 @@ RUN mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} && \
     cd ~/rpmbuild/SOURCES && \
     tar czf Cetus-1.0.tar.gz Cetus-1.0
 
-# Create RPM spec file
+# Create a non-root user for RPM building
+RUN useradd -m -s /bin/bash builder && \
+    chown -R builder:builder ~/rpmbuild
+
+# Switch to builder user and create RPM spec file
+USER builder
 RUN cat > ~/rpmbuild/SPECS/cetus.spec << 'EOF'
 Name:           Cetus
 Version:        1.0
@@ -103,7 +108,7 @@ ICON_EOF
 %{_datadir}/pixmaps/%{name}.svg
 
 %changelog
-* $(date +"%a %b %d %Y") Your Name <your@email.com> - 1.0-1
+* Mon Dec 23 2024 Your Name <your@email.com> - 1.0-1
 - Initial package
 EOF
 
@@ -111,8 +116,11 @@ EOF
 RUN cd ~/rpmbuild/SPECS && \
     rpmbuild -ba cetus.spec
 
+# Switch back to root to copy artifacts
+USER root
+
 # Copy the built RPM to artifacts
 RUN mkdir -p /artifacts && \
-    cp ~/rpmbuild/RPMS/x86_64/Cetus-*.rpm /artifacts/
+    cp /home/builder/rpmbuild/RPMS/x86_64/Cetus-*.rpm /artifacts/
 
 CMD ["bash"]
