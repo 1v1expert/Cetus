@@ -66,6 +66,24 @@ dnf_install_provider_of_file() {
   return 1
 }
 
+dnf_install_provider_of_capability() {
+  # Usage: dnf_install_provider_of_capability "pkgconfig(Qt5Core)" "label"
+  # Installs the first package that provides the given capability.
+  local capability=$1
+  local label=${2:-capability}
+
+  local provider
+  provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.[A-Za-z0-9_]+[[:space:]]/{print $1; exit}')
+
+  if [[ -n "$provider" ]]; then
+    echo "Installing $label provider: $provider"
+    dnf -y install "$provider"
+    return 0
+  fi
+
+  return 1
+}
+
 echo "Installing build deps (dnf)..."
 dnf -y makecache || true
 
@@ -80,6 +98,9 @@ fi
 
 # Toolchain (install what is available).
 dnf_install_available gcc-c++ g++ gcc make cmake git
+
+# pkg-config is commonly required for Qt module detection.
+dnf_install_available pkgconf pkg-config
 
 # Qt build deps: MOS 12 naming differs across repos/branches.
 # Try both ALT-style and Fedora-style names; install whichever exist.
@@ -116,6 +137,35 @@ if ! command -v qmake-qt5 >/dev/null 2>&1 && ! command -v qmake >/dev/null 2>&1;
   echo "  dnf provides '*/qmake'" >&2
   exit 1
 fi
+
+# Pick qmake (prefer qmake-qt5) and print info.
+QMAKE_BIN=$(command -v qmake-qt5 2>/dev/null || command -v qmake 2>/dev/null || true)
+if [[ -z "$QMAKE_BIN" ]]; then
+  echo "ERROR: internal: qmake detection failed." >&2
+  exit 1
+fi
+
+echo "qmake selected: $QMAKE_BIN"
+if "$QMAKE_BIN" -query QT_VERSION >/dev/null 2>&1; then
+  echo "Qt version: $($QMAKE_BIN -query QT_VERSION)"
+  echo "QT_INSTALL_PREFIX: $($QMAKE_BIN -query QT_INSTALL_PREFIX 2>/dev/null || true)"
+  echo "QT_INSTALL_LIBS:   $($QMAKE_BIN -query QT_INSTALL_LIBS 2>/dev/null || true)"
+else
+  echo "WARN: '$QMAKE_BIN -query' failed; Qt installation may be incomplete." >&2
+fi
+
+# Ensure Qt5 module development packages exist. The error you got:
+#   Unknown module(s) in QT: core gui qml quick widgets
+# happens when the Qt5 .pri/module files are missing (typically devel packages).
+# MOS 12 package names vary, so we resolve by provided capabilities.
+dnf_install_provider_of_capability "pkgconfig(Qt5Core)" "Qt5Core" || true
+dnf_install_provider_of_capability "pkgconfig(Qt5Gui)" "Qt5Gui" || true
+dnf_install_provider_of_capability "pkgconfig(Qt5Widgets)" "Qt5Widgets" || true
+dnf_install_provider_of_capability "pkgconfig(Qt5Qml)" "Qt5Qml" || true
+dnf_install_provider_of_capability "pkgconfig(Qt5Quick)" "Qt5Quick" || true
+
+# QuickControls2 is optional depending on QML imports, but try if available.
+dnf_install_provider_of_capability "pkgconfig(Qt5QuickControls2)" "Qt5QuickControls2" || true
 
 if ! command -v lupdate >/dev/null 2>&1; then
   echo "WARN: lupdate not found (OK for MOS 12 build: CETUS_NO_LINGUIST disables translation rebuild)." >&2
