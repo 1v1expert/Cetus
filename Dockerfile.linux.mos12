@@ -95,10 +95,6 @@ RUN cd /build/Cetus && \
     --desktop-file AppDir/usr/share/applications/Cetus.desktop \
     --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg || true
 
-# Create custom AppRun with Qt environment
-RUN printf '#!/bin/bash\nHERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"\nexport LD_LIBRARY_PATH="$HERE/usr/lib:$LD_LIBRARY_PATH"\nexport QT_PLUGIN_PATH="$HERE/usr/lib/qt5/plugins"\nexport QML2_IMPORT_PATH="$HERE/usr/lib/qt5/qml"\nexec "$HERE/usr/bin/Cetus" "$@"\n' > /build/Cetus/AppDir/AppRun && \
-    chmod +x /build/Cetus/AppDir/AppRun
-
 # Create default artifacts directory
 RUN mkdir -p /build/artifacts
 
