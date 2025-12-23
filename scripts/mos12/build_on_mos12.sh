@@ -202,6 +202,8 @@ QMAKE_CANDIDATES=()
 command -v qmake-qt5 >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake-qt5")
 command -v qmake >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake")
 command -v qmake5 >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake5")
+[[ -x "/usr/lib/qt5/bin/qmake" ]] && QMAKE_CANDIDATES+=("/usr/lib/qt5/bin/qmake")
+[[ -x "/usr/lib64/qt5/bin/qmake" ]] && QMAKE_CANDIDATES+=("/usr/lib64/qt5/bin/qmake")
 
 QMAKE_BIN=""
 for candidate in "${QMAKE_CANDIDATES[@]}"; do
