@@ -217,9 +217,26 @@ for candidate in "${QMAKE_CANDIDATES[@]}"; do
 done
 
 if [[ -z "$QMAKE_BIN" ]]; then
-  echo "ERROR: No working qmake found with Qt5 mkspecs/modules." >&2
-  echo "Qt5 devel packages may be incomplete or misconfigured." >&2
-  echo "Try installing qt5-qtbase-devel or qt5-mkspecs explicitly." >&2
+  echo "No working qmake found; trying to install qt5-mkspecs..."
+  dnf_install_available qt5-mkspecs qt5-qtbase-mkspecs qt5-base-mkspecs libqt5-mkspecs
+  # Retry qmake selection
+  for candidate in "${QMAKE_CANDIDATES[@]}"; do
+    echo "Retesting qmake candidate: $candidate"
+    MKSPECS_DIR=$("$candidate" -query QT_INSTALL_MKSPECS 2>/dev/null || echo "")
+    if [[ -n "$MKSPECS_DIR" && -d "$MKSPECS_DIR/modules" && -f "$MKSPECS_DIR/modules/qt_lib_core.pri" ]]; then
+      echo "Selected qmake: $candidate (mkspecs found at $MKSPECS_DIR)"
+      QMAKE_BIN="$candidate"
+      break
+    else
+      echo "Still rejected $candidate: mkspecs missing or incomplete"
+    fi
+  done
+fi
+
+if [[ -z "$QMAKE_BIN" ]]; then
+  echo "ERROR: No working qmake found even after installing mkspecs." >&2
+  echo "Qt5 devel installation on MOS 12 may be incomplete." >&2
+  echo "Check dnf search qt5 | grep mkspecs" >&2
   exit 1
 fi
 
