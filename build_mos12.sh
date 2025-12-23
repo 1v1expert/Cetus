@@ -15,4 +15,4 @@ docker build -f Dockerfile.mos12 -t cetus-mos12 .
 docker run --rm -v $(pwd)/artifacts:/host-artifacts cetus-mos12 cp /artifacts/Cetus-*.rpm /host-artifacts/
 
 echo "RPM package created in artifacts/ directory"
-echo "To install on MOS 12: sudo apt-get install ./Cetus-*.rpm"
+echo "To install on MOS 12: dnf install ./Cetus-*.rpm"
