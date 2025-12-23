@@ -16,9 +16,25 @@ echo "Preparing source bundle for MOS 12 build..."
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
-# Create a clean source tarball
-tar --exclude='./artifacts' --exclude='./.git' --exclude='./build-*' \
-	-czf "$OUT_DIR/${NAME}-${VERSION}.tar.gz" .
+# Create a clean source tarball with a top-level folder NAME-VERSION/
+STAGING_DIR="$(mktemp -d)"
+trap 'rm -rf "$STAGING_DIR"' EXIT
+
+mkdir -p "$STAGING_DIR/${NAME}-${VERSION}"
+
+# Prefer rsync for reliable excludes; fall back to tar if not available.
+if command -v rsync >/dev/null 2>&1; then
+	rsync -a \
+		--exclude ".git" \
+		--exclude "artifacts" \
+		--exclude "build-*" \
+		./ "$STAGING_DIR/${NAME}-${VERSION}/"
+else
+	tar --exclude='./.git' --exclude='./artifacts' --exclude='./build-*' \
+		-cf - . | tar -xf - -C "$STAGING_DIR/${NAME}-${VERSION}/"
+fi
+
+tar -C "$STAGING_DIR" -czf "$OUT_DIR/${NAME}-${VERSION}.tar.gz" "${NAME}-${VERSION}"
 
 cp -f "packaging/mos12/cetus.spec" "$OUT_DIR/cetus.spec"
 cp -f "scripts/mos12/build_on_mos12.sh" "$OUT_DIR/build_on_mos12.sh"

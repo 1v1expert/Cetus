@@ -72,7 +72,7 @@ dnf_install_available \
   qt5-qmake qt5-qmake-devel
 
 # X11 / OpenGL headers (install whatever exists)
-dnf_install_available libx11-devel libX11-devel libxcb-devel libxkbcommon-devel \
+dnf_install_available libx11-devel libxcb-devel libxkbcommon-devel \
   mesa-libGL-devel mesa-libgl-devel libGL-devel libglvnd-devel
 
 echo "Using rpmbuild: $(command -v rpmbuild)"
