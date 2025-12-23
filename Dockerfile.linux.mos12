@@ -98,6 +98,9 @@ RUN mkdir -p /build/Cetus/AppDir/usr/lib && \
     grep -v 'libc\|libm\|libpthread\|libdl\|librt\|libselinux\|libresolv\|libgcc_s\|libstdc++' | \
     xargs -I {} cp {} /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
 
+# Remove accidentally bundled base/system libs that can break coreutils
+RUN rm -f /build/Cetus/AppDir/usr/lib/libselinux.so.* || true
+
 # Copy additional X11/xcb deps for qxcb plugin
 RUN mkdir -p /build/Cetus/AppDir/usr/lib && \
     cp /usr/lib/x86_64-linux-gnu/libxcb*.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
@@ -124,7 +127,11 @@ RUN cd /build/Cetus && \
     --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg || true
 
 # Create robust AppRun with Qt environment (handles AppRun placed in /usr/bin inside AppImage)
-RUN printf '#!/bin/bash\nAPPDIR=$(dirname "$(readlink -f "$0")")\n# If AppRun resides in .../usr/bin, go two levels up\nif [[ "$APPDIR" == */usr/bin ]]; then APPDIR=$(dirname "$(dirname "$APPDIR")"); fi\nexport LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH"\nexport QT_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins"\nexport QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins/platforms"\nexport QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml"\nexec "$APPDIR/usr/bin/Cetus" "$@"\n' > /build/Cetus/AppDir/AppRun && \
+RUN printf '#!/bin/bash\nAPPDIR="$(cd \"$(dirname \"$0\")\" && pwd)"\nexec env LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH" \
+    QT_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins" \
+    QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins/platforms" \
+    QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml" \
+    "$APPDIR/usr/bin/Cetus" "$@"\n' > /build/Cetus/AppDir/AppRun && \
     chmod +x /build/Cetus/AppDir/AppRun
 
 # Create default artifacts directory
