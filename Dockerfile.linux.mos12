@@ -69,33 +69,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     perl \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
-# Build static Qt5 for static linking
-RUN cd /tmp && \
-    wget -q https://download.qt.io/archive/qt/5.9/5.9.5/single/qt-everywhere-opensource-src-5.9.5.tar.xz && \
-    tar xf qt-everywhere-opensource-src-5.9.5.tar.xz && \
-    cd qt-everywhere-opensource-src-5.9.5 && \
-    ./configure -static -release -prefix /opt/qt5-static \
-        -qt-xcb \
-        -qt-declarative \
-        -qt-quickcontrols2 \
-        -no-opengl \
-        -no-gtk \
-        -no-sql-sqlite \
-        -no-sql-mysql \
-        -no-sql-odbc \
-        -no-sql-psql \
-        -no-cups \
-        -no-iconv \
-        -no-icu \
-        -no-pch \
-        -nomake examples \
-        -nomake tests \
-        -opensource \
-        -confirm-license && \
-    make -j$(nproc) && \
-    make install && \
-    rm -rf /tmp/qt-everywhere-opensource-src-5.9.5*
-
 # Note: appimagetool will be downloaded on the host to avoid FUSE issues in Docker
 # We only prepare the AppDir here
 
@@ -108,25 +81,68 @@ RUN mkdir -p /build/Cetus/build-linux
 
 # Run qmake and build
 WORKDIR /build/Cetus/build-linux
-RUN /opt/qt5-static/bin/qmake ../Cetus.pro -r && make -j$(nproc)
+RUN /usr/lib/qt5/bin/qmake ../Cetus.pro -r && make -j$(nproc)
 
 # Create AppDir structure for AppImage
 RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
+    mkdir -p /build/Cetus/AppDir/usr/lib && \
     mkdir -p /build/Cetus/AppDir/usr/share/applications && \
     mkdir -p /build/Cetus/AppDir/usr/share/pixmaps
 
 # Copy binary to AppDir
 RUN cp /build/Cetus/build-linux/Cetus /build/Cetus/AppDir/usr/bin/
 
+# Install linuxdeploy
+RUN cd /tmp && \
+    wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage && \
+    chmod +x linuxdeploy-x86_64.AppImage && \
+    ./linuxdeploy-x86_64.AppImage --appimage-extract && \
+    mv squashfs-root /linuxdeploy
+
+# Copy Qt libraries and plugins manually
+RUN mkdir -p /build/Cetus/AppDir/usr/lib && \
+    ldd /build/Cetus/build-linux/Cetus | awk '{print $3}' | grep '^/' | \
+    grep -v 'libc\|libm\|libpthread\|libdl\|librt\|libselinux\|libresolv\|libgcc_s\|libstdc++' | \
+    xargs -I {} cp {} /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
+
+# Remove accidentally bundled base/system libs that can break coreutils
+RUN rm -f /build/Cetus/AppDir/usr/lib/libselinux.so.* || true
+
+# Copy additional X11/xcb deps for qxcb plugin
+RUN mkdir -p /build/Cetus/AppDir/usr/lib && \
+    cp /usr/lib/x86_64-linux-gnu/libxcb*.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /lib/x86_64-linux-gnu/libxcb*.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libxkbcommon*.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libX11-xcb.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libXrender.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libXss.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libSM.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true && \
+    cp /usr/lib/x86_64-linux-gnu/libICE.so* /build/Cetus/AppDir/usr/lib/ 2>/dev/null || true
+
+# Copy Qt plugins and QML
+RUN mkdir -p /build/Cetus/AppDir/usr/lib/qt5 && \
+    cp -r /usr/lib/x86_64-linux-gnu/qt5/plugins /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null && \
+    cp -r /usr/lib/x86_64-linux-gnu/qt5/qml /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null || true
+
 # Create Desktop Entry and Icon
 RUN cd /build/Cetus && \
     printf '[Desktop Entry]\nType=Application\nName=Cetus\nComment=CNC Machine Control Application\nExec=Cetus\nIcon=Cetus\nCategories=Utility;\nTerminal=false\n' > AppDir/usr/share/applications/Cetus.desktop && \
     printf '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#4a90e2"/><text x="128" y="140" font-size="120" text-anchor="middle" fill="white">C</text></svg>' > AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg
 
-# Create simple AppRun script
+# Create AppRun script with proper Qt environment setup
 RUN cat > /build/Cetus/AppDir/AppRun << 'APPRUN_EOF' && chmod +x /build/Cetus/AppDir/AppRun
 #!/bin/bash
-exec "$0/usr/bin/Cetus" "$@"
+# Determine APPDIR - the directory where AppRun is located
+export APPDIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Set up Qt environment variables for AppImage
+export LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH"
+export QT_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins/platforms"
+export QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml"
+
+# Execute the application
+exec "$APPDIR/usr/bin/Cetus" "$@"
 APPRUN_EOF
 
 # Install appimagetool and create the final AppImage
