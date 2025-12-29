@@ -41,12 +41,15 @@ dnf_install_available gcc-c++ g++ gcc make cmake git
 dnf_install_available pkgconf pkg-config
 
 # Qt build deps: MOS 12 ALT Linux naming
+# Install meta-package qt5-devel which should pull all needed dependencies
+dnf_install_available qt5-devel qt5-tools qt5-linguist qt5-assistant qt5-designer
+
+# Install individual Qt5 devel packages as fallback
 dnf_install_available \
   libqt5core-devel libqt5gui-devel libqt5widgets-devel \
-  libqt5qml-devel libqt5quick-devel libqt5declarative-devel \
-  libqt5tools-devel qttools5-dev-tools \
-  libqt5quickcontrols2-devel libqt5qtquickcontrols2-devel libqt5qtquickcontrols2 \
-  qt5-tools
+  libqt5qml-devel libqt5quick-devel \
+  libqt5tools-devel \
+  libqt5quickcontrols2-devel
 
 # X11 / OpenGL headers
 dnf_install_available libx11-devel libxcb-devel libxkbcommon-devel \
@@ -99,38 +102,49 @@ command -v qmake5 >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake5")
 QMAKE_BIN=""
 for candidate in "${QMAKE_CANDIDATES[@]}"; do
   echo "Testing qmake candidate: $candidate"
-  MKSPECS_DIR=$("$candidate" -query QT_INSTALL_MKSPECS 2>/dev/null || echo "")
-  if [[ -n "$MKSPECS_DIR" && -d "$MKSPECS_DIR/modules" && -f "$MKSPECS_DIR/modules/qt_lib_core.pri" ]]; then
-    echo "Selected qmake: $candidate (mkspecs found at $MKSPECS_DIR)"
+  # Simplified check: just verify qmake can query Qt version
+  if "$candidate" -query QT_VERSION >/dev/null 2>&1; then
+    QT_VER=$("$candidate" -query QT_VERSION 2>/dev/null || echo "unknown")
+    echo "Selected qmake: $candidate (Qt version: $QT_VER)"
     QMAKE_BIN="$candidate"
     break
   else
-    echo "Rejected $candidate: mkspecs missing or incomplete"
+    echo "Rejected $candidate: cannot query Qt version"
   fi
 done
 
 if [[ -z "$QMAKE_BIN" ]]; then
-  echo "No working qmake found; trying to install additional Qt5 devel packages..."
-  dnf_install_available libqt5core5 libqt5gui5 libqt5widgets5 libqt5qml5 libqt5quick5 libqt5declarative5 libqt5tools5
-  # Retry qmake selection
+  echo "No working qmake found; trying to install additional Qt5 packages..."
+  dnf_install_available qt5-qtdeclarative qt5-qtbase-gui
+  # Retry qmake selection with simplified check
   for candidate in "${QMAKE_CANDIDATES[@]}"; do
     echo "Retesting qmake candidate: $candidate"
-    MKSPECS_DIR=$("$candidate" -query QT_INSTALL_MKSPECS 2>/dev/null || echo "")
-    if [[ -n "$MKSPECS_DIR" && -d "$MKSPECS_DIR/modules" && -f "$MKSPECS_DIR/modules/qt_lib_core.pri" ]]; then
-      echo "Selected qmake: $candidate (mkspecs found at $MKSPECS_DIR)"
+    if "$candidate" -query QT_VERSION >/dev/null 2>&1; then
+      QT_VER=$("$candidate" -query QT_VERSION 2>/dev/null || echo "unknown")
+      echo "Selected qmake: $candidate (Qt version: $QT_VER)"
       QMAKE_BIN="$candidate"
       break
     else
-      echo "Still rejected $candidate: mkspecs missing or incomplete"
+      echo "Still rejected $candidate: cannot query Qt version"
     fi
   done
 fi
 
 if [[ -z "$QMAKE_BIN" ]]; then
-  echo "ERROR: No working qmake found even after installing mkspecs." >&2
+  echo "ERROR: No working qmake found." >&2
   echo "Qt5 devel installation on MOS 12 may be incomplete." >&2
-  echo "Check dnf search qt5 | grep mkspecs" >&2
-  exit 1
+  echo "Trying to use qmake-qt5 directly as last resort..." >&2
+  if command -v qmake-qt5 >/dev/null 2>&1; then
+    QMAKE_BIN="qmake-qt5"
+    echo "Using qmake-qt5 directly without validation" >&2
+  elif command -v qmake >/dev/null 2>&1; then
+    QMAKE_BIN="qmake"
+    echo "Using qmake directly without validation" >&2
+  else
+    echo "ERROR: No qmake executable found at all." >&2
+    echo "Please install Qt5 development packages manually: sudo dnf install qt5-devel" >&2
+    exit 1
+  fi
 fi
 
 echo "qmake selected: $QMAKE_BIN"

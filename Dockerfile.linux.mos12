@@ -17,6 +17,7 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://ftp.ubuntu.com/ubuntu/|g'
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
+    git \
     qt5-qmake \
     qtchooser \
     qtbase5-dev \
@@ -69,6 +70,48 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     perl \
     libgpgme11 \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
+
+# Install Machinekit QML modules (from PPA or build from source)
+# Note: These modules are required for Cetus to run
+RUN apt-get update && apt-get install -y software-properties-common && \
+    add-apt-repository -y ppa:machinekit/machinekit || true && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python-pyqt5 \
+        python-pyqt5.qtopengl \
+        python-dbus.mainloop.pyqt5 \
+        python-configobj \
+        python-zmq \
+        python-protobuf \
+        python-avahi \
+        python-simplejson \
+        pyqt5-dev-tools \
+        qtbase5-private-dev \
+        libzmq3-dev \
+        libczmq-dev \
+        libjansson-dev \
+        libwebsockets-dev \
+        libavahi-client-dev \
+        libprotobuf-dev \
+        libprotoc-dev \
+        protobuf-compiler \
+        python-protobuf \
+    || echo "WARNING: Some Machinekit dependencies not available, continuing..."
+
+# Clone and build QtQuickVcp (provides Machinekit QML modules)
+RUN cd /tmp && \
+    git clone --depth 1 https://github.com/qtquickvcp/QtQuickVcp.git || true && \
+    if [ -d QtQuickVcp ]; then \
+        cd QtQuickVcp && \
+        git submodule update --init --recursive && \
+        mkdir build && cd build && \
+        qmake ../QtQuickVcp.pro && \
+        make -j$(nproc) && \
+        make install && \
+        cd /tmp && rm -rf QtQuickVcp; \
+    else \
+        echo "WARNING: QtQuickVcp clone failed, Machinekit modules will not be available"; \
+    fi
 
 # Note: appimagetool will be downloaded on the host to avoid FUSE issues in Docker
 # We only prepare the AppDir here
@@ -123,7 +166,10 @@ RUN mkdir -p /build/Cetus/AppDir/usr/lib && \
 # Copy Qt plugins and QML
 RUN mkdir -p /build/Cetus/AppDir/usr/lib/qt5 && \
     cp -r /usr/lib/x86_64-linux-gnu/qt5/plugins /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null && \
-    cp -r /usr/lib/x86_64-linux-gnu/qt5/qml /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null || true
+    cp -r /usr/lib/x86_64-linux-gnu/qt5/qml /build/Cetus/AppDir/usr/lib/qt5/ 2>/dev/null || true && \
+    cp -r /usr/local/lib/qt5/qml/Machinekit /build/Cetus/AppDir/usr/lib/qt5/qml/ 2>/dev/null || \
+    cp -r /usr/lib/x86_64-linux-gnu/qt5/qml/Machinekit /build/Cetus/AppDir/usr/lib/qt5/qml/ 2>/dev/null || \
+    echo "WARNING: Machinekit QML modules not found, application may not start correctly"
 
 # Create Desktop Entry and Icon
 RUN cd /build/Cetus && \
@@ -132,22 +178,6 @@ RUN cd /build/Cetus && \
     printf '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#4a90e2"/><text x="128" y="140" font-size="120" text-anchor="middle" fill="white">C</text></svg>' > AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg && \
     cp AppDir/usr/share/icons/hicolor/scalable/apps/Cetus.svg AppDir/Cetus.svg
 
-# Create AppRun script with proper Qt environment setup
-RUN cat > /build/Cetus/AppDir/AppRun << 'APPRUN_EOF' && chmod +x /build/Cetus/AppDir/AppRun
-#!/bin/bash
-# Determine APPDIR - the directory where AppRun is located
-export APPDIR="$(cd "$(dirname "$0")" && pwd)"
-
-# Set up Qt environment variables for AppImage
-export LD_LIBRARY_PATH="$APPDIR/usr/lib:$LD_LIBRARY_PATH"
-export QT_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins"
-export QT_QPA_PLATFORM_PLUGIN_PATH="$APPDIR/usr/lib/qt5/plugins/platforms"
-export QML2_IMPORT_PATH="$APPDIR/usr/lib/qt5/qml"
-
-# Execute the application
-exec "$APPDIR/usr/bin/Cetus" "$@"
-APPRUN_EOF
-
 # Install appimagetool and create the final AppImage
 RUN cd /tmp && \
     wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage && \
@@ -155,7 +185,7 @@ RUN cd /tmp && \
     ./appimagetool-x86_64.AppImage --appimage-extract && \
     mv squashfs-root /appimagetool && \
     mkdir -p /build/artifacts && \
-    /appimagetool/usr/bin/appimagetool /build/Cetus/AppDir /build/artifacts/Cetus-x86_64.AppImage
+    ARCH=x86_64 /appimagetool/usr/bin/appimagetool --no-appstream /build/Cetus/AppDir /build/artifacts/Cetus-x86_64.AppImage
 
 # Output message
 RUN echo "AppImage created at /build/artifacts/Cetus-x86_64.AppImage"
