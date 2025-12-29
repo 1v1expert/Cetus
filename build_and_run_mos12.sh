@@ -1,62 +1,68 @@
 #!/bin/bash
 set -e
 
+dnf_install_available() {
+  # Installs only packages that exist in enabled repos.
+  # Usage: dnf_install_available pkg1 pkg2 ...
+  local packages_to_install=()
+  local pkg
+  for pkg in "$@"; do
+    if [[ "${ARCH:-}" == "x86_64" ]]; then
+      # Only install variants that can exist alongside --exclude=*.i686.
+      if dnf -q list --available "${pkg}.x86_64" >/dev/null 2>&1; then
+        packages_to_install+=("${pkg}.x86_64")
+      elif dnf -q list --available "${pkg}.noarch" >/dev/null 2>&1; then
+        packages_to_install+=("${pkg}.noarch")
+      else
+        # Likely i686-only or not present; skip silently.
+        :
+      fi
+    else
+      if dnf -q list --available "$pkg" >/dev/null 2>&1; then
+        packages_to_install+=("$pkg")
+      fi
+    fi
+  done
+  if ((${#packages_to_install[@]} > 0)); then
+    dnf -y install "${packages_to_install[@]}"
+  fi
+}
+
 echo "Updating system packages..."
-apt-get update
+dnf -y makecache
+
+ARCH=$(rpm --eval '%{_arch}' 2>/dev/null || uname -m)
 
 echo "Installing build dependencies..."
-apt-get install -y --no-install-recommends \
-    build-essential \
-    cmake \
-    qt5-qmake \
-    qt5-base-devel \
-    qt5-declarative-devel \
-    qt5-tools-devel \
-    qt5-quickcontrols2-devel \
-    libqt5core5 \
-    libqt5gui5 \
-    libqt5widgets5 \
-    libqt5qml5 \
-    libqt5quick5 \
-    libqt5network5 \
-    libqt5dbus5 \
-    libqt5sql5 \
-    qt5-image-formats-plugins \
-    libxkbcommon-devel \
-    libxkbcommon-x11-devel \
-    libgl1-mesa-devel \
-    libx11-devel \
-    libxkbfile-devel \
-    libxcb1 \
-    libxcb-render-util0 \
-    libxcb-icccm4 \
-    libxcb-image0 \
-    libxcb-keysyms1 \
-    libxcb-randr0 \
-    libxcb-shape0 \
-    libxcb-xfixes0 \
-    libxcb-sync1 \
-    libxcb-xinerama0 \
-    libxrender1 \
-    libx11-xcb1 \
-    libxkbcommon0 \
-    libxkbcommon-x11-0 \
-    libxss1 \
-    libsm6 \
-    libice6 \
-    git \
-    pkg-config \
-    ca-certificates \
-    wget \
-    curl \
-    appstream \
-    desktop-file-utils \
-    fuse \
-    libfuse-devel \
-    file \
-    patchelf \
-    python \
-    perl
+# Toolchain
+dnf_install_available gcc-c++ g++ gcc make cmake git
+
+# pkg-config
+dnf_install_available pkgconf pkg-config
+
+# Qt build deps
+dnf_install_available \
+  qt5-base-devel qt5-qtbase-devel \
+  qt5-declarative-devel qt5-qtdeclarative-devel \
+  qt5-tools-devel qt5-qttools-devel qttools5-dev-tools \
+  qt5-quickcontrols2-devel qt5-qtquickcontrols2-devel qt5-qtquickcontrols2 \
+  qt5-qmake qt5-qmake-devel
+
+# X11 / OpenGL headers
+dnf_install_available libx11-devel libxcb-devel libxkbcommon-devel \
+  mesa-libGL-devel mesa-libgl-devel libGL-devel libglvnd-devel
+
+# Additional libs
+dnf_install_available \
+  libqt5core5 libqt5gui5 libqt5widgets5 libqt5qml5 libqt5quick5 \
+  libqt5network5 libqt5dbus5 libqt5sql5 qt5-image-formats-plugins \
+  libxkbcommon-x11-devel libgl1-mesa-devel libxkbfile-devel \
+  libxcb1 libxcb-render-util0 libxcb-icccm4 libxcb-image0 \
+  libxcb-keysyms1 libxcb-randr0 libxcb-shape0 libxcb-xfixes0 \
+  libxcb-sync1 libxcb-xinerama0 libxrender1 libx11-xcb1 \
+  libxkbcommon0 libxkbcommon-x11-0 libxss1 libsm6 libice6 \
+  ca-certificates wget curl appstream desktop-file-utils \
+  fuse libfuse-devel file patchelf python3 perl
 
 echo "Creating build directory..."
 mkdir -p build-linux
