@@ -91,6 +91,7 @@ RUN cd /tmp && \
     cd QtQuickVcp && \
     git submodule update --init --recursive && \
     rm -rf build && mkdir -p build && cd build && \
+    export QT_SELECT=qt5 && \
     qmake ../QtQuickVcp.pro && \
     make -j$(nproc) && \
     make install && \
