@@ -46,7 +46,7 @@ dnf_install_available \
   libqt5qml-devel libqt5quick-devel libqt5declarative-devel \
   libqt5tools-devel qttools5-dev-tools \
   libqt5quickcontrols2-devel libqt5qtquickcontrols2-devel libqt5qtquickcontrols2 \
-  qt5-qmake qt5-qmake-devel
+  qt5-tools
 
 # X11 / OpenGL headers
 dnf_install_available libx11-devel libxcb-devel libxkbcommon-devel \
@@ -110,9 +110,8 @@ for candidate in "${QMAKE_CANDIDATES[@]}"; do
 done
 
 if [[ -z "$QMAKE_BIN" ]]; then
-  echo "No working qmake found; trying to install qt5-mkspecs and qt5-base..."
-  dnf_install_available qt5-mkspecs qt5-qtbase-mkspecs qt5-base-mkspecs libqt5-mkspecs \
-    qt5-base qt5-qtbase libqt5-base
+  echo "No working qmake found; trying to install additional Qt5 devel packages..."
+  dnf_install_available libqt5core5 libqt5gui5 libqt5widgets5 libqt5qml5 libqt5quick5 libqt5declarative5 libqt5tools5
   # Retry qmake selection
   for candidate in "${QMAKE_CANDIDATES[@]}"; do
     echo "Retesting qmake candidate: $candidate"
