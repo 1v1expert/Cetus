@@ -150,8 +150,10 @@ APPRUN_EOF
 RUN cd /tmp && \
     wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage && \
     chmod +x appimagetool-x86_64.AppImage && \
+    ./appimagetool-x86_64.AppImage --appimage-extract && \
+    mv squashfs-root /appimagetool && \
     mkdir -p /build/artifacts && \
-    ./appimagetool-x86_64.AppImage /build/Cetus/AppDir /build/artifacts/Cetus-x86_64.AppImage
+    /appimagetool/usr/bin/appimagetool /build/Cetus/AppDir /build/artifacts/Cetus-x86_64.AppImage
 
 # Output message
 RUN echo "AppImage created at /build/artifacts/Cetus-x86_64.AppImage"
