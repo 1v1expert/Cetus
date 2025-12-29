@@ -40,13 +40,13 @@ dnf_install_available gcc-c++ g++ gcc make cmake git
 # pkg-config
 dnf_install_available pkgconf pkg-config
 
-# Qt build deps: ALT Linux naming
+# Qt build deps: MOS 12 ALT Linux naming
 dnf_install_available \
-  libqt5-base-devel libqt5-qtbase-devel \
-  libqt5-declarative-devel libqt5-qtdeclarative-devel \
-  libqt5-tools-devel libqt5-qttools-devel qttools5-dev-tools \
-  libqt5-quickcontrols2-devel libqt5-qtquickcontrols2-devel libqt5-qtquickcontrols2 \
-  libqt5-qmake qt5-qmake-devel
+  libqt5core-devel libqt5gui-devel libqt5widgets-devel \
+  libqt5qml-devel libqt5quick-devel libqt5declarative-devel \
+  libqt5tools-devel qttools5-dev-tools \
+  libqt5quickcontrols2-devel libqt5qtquickcontrols2-devel libqt5qtquickcontrols2 \
+  qt5-qmake qt5-qmake-devel
 
 # X11 / OpenGL headers
 dnf_install_available libx11-devel libxcb-devel libxkbcommon-devel \
@@ -54,7 +54,8 @@ dnf_install_available libx11-devel libxcb-devel libxkbcommon-devel \
 
 # Additional libs
 dnf_install_available \
-  libqt5-base libqt5-declarative libqt5-tools \
+  libqt5core5 libqt5gui5 libqt5widgets5 libqt5qml5 libqt5quick5 \
+  libqt5declarative5 libqt5tools5 \
   qt5-image-formats-plugins \
   libxkbcommon-x11-devel libgl1-mesa-devel libxkbfile-devel \
   libxcb1 libxcb-render-util0 libxcb-icccm4 libxcb-image0 \
@@ -110,7 +111,8 @@ done
 
 if [[ -z "$QMAKE_BIN" ]]; then
   echo "No working qmake found; trying to install qt5-mkspecs and qt5-base..."
-  dnf_install_available libqt5-mkspecs libqt5-base
+  dnf_install_available qt5-mkspecs qt5-qtbase-mkspecs qt5-base-mkspecs libqt5-mkspecs \
+    qt5-base qt5-qtbase libqt5-base
   # Retry qmake selection
   for candidate in "${QMAKE_CANDIDATES[@]}"; do
     echo "Retesting qmake candidate: $candidate"
@@ -148,10 +150,10 @@ dnf_install_provider_of_capability "pkgconfig(Qt5QuickControls2)" "Qt5QuickContr
 if command -v pkg-config >/dev/null 2>&1 && ! pkg-config --exists Qt5Core 2>/dev/null; then
   echo "Qt5Core pkg-config not found after provider installs; trying fallback Qt5 devel packages..."
   dnf_install_available \
-    libqt5-base-devel libqt5-qtbase-devel qt5-devel qt-devel \
-    libqt5-declarative-devel libqt5-qtdeclarative-devel \
-    libqt5-tools-devel libqt5-qttools-devel \
-    libqt5-quickcontrols2-devel libqt5-qtquickcontrols2-devel
+    libqt5core-devel libqt5gui-devel libqt5widgets-devel qt5-devel qt-devel \
+    libqt5qml-devel libqt5quick-devel libqt5declarative-devel \
+    libqt5tools-devel \
+    libqt5quickcontrols2-devel libqt5qtquickcontrols2-devel
 fi
 
 echo "Creating build directory..."

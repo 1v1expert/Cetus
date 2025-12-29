@@ -82,7 +82,7 @@ RUN mkdir -p /build/Cetus/build-linux
 
 # Run qmake and build
 WORKDIR /build/Cetus/build-linux
-RUN /usr/lib/qt5/bin/qmake ../Cetus.pro -r && make -j$(nproc)
+RUN qmake-qt5 ../Cetus.pro -r && make -j$(nproc)
 
 # Create AppDir structure for AppImage
 RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
@@ -91,7 +91,7 @@ RUN mkdir -p /build/Cetus/AppDir/usr/bin && \
     mkdir -p /build/Cetus/AppDir/usr/share/pixmaps
 
 # Copy binary to AppDir
-RUN cp /build/Cetus/build-linux/Cetus /build/Cetus/AppDir/usr/bin/
+RUN cp /build/Cetus/build-linux/Cetus /build/Cetus/AppDir/usr/bin/ && chmod +x /build/Cetus/AppDir/usr/bin/Cetus
 
 # Install linuxdeploy
 RUN cd /tmp && \
