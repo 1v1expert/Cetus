@@ -64,12 +64,103 @@ dnf_install_available \
   ca-certificates wget curl appstream desktop-file-utils \
   fuse libfuse-devel file patchelf python3 perl
 
+# Ensure qmake exists (some MOS repos ship it under different package names).
+if ! command -v qmake-qt5 >/dev/null 2>&1 && ! command -v qmake >/dev/null 2>&1; then
+  echo "qmake not found after initial deps install; trying to discover provider..."
+
+  # Common paths; try both.
+  dnf_install_provider_of_file "*/qmake" "qmake" || true
+  dnf_install_provider_of_file "/usr/bin/qmake" "qmake" || true
+  dnf_install_provider_of_file "/usr/bin/qmake-qt5" "qmake-qt5" || true
+
+  # Last resort: try a few very common names.
+  dnf_install_available qt5-qmake qt5-qmake-devel qt-qmake qt-qmake-devel qtbase5-dev-tools || true
+fi
+
+if ! command -v qmake-qt5 >/dev/null 2>&1 && ! command -v qmake >/dev/null 2>&1; then
+  echo "ERROR: qmake was not found and could not be installed from enabled repos." >&2
+  echo "Please enable the MOS 12 repository that contains Qt development packages." >&2
+  echo "Useful commands to diagnose on MOS 12:" >&2
+  echo "  dnf repolist" >&2
+  echo "  dnf search qmake" >&2
+  echo "  dnf provides '*/qmake'" >&2
+  exit 1
+fi
+
+# Pick qmake (prefer the one with working mkspecs)
+QMAKE_CANDIDATES=()
+command -v qmake-qt5 >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake-qt5")
+command -v qmake >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake")
+command -v qmake5 >/dev/null 2>&1 && QMAKE_CANDIDATES+=("qmake5")
+[[ -x "/usr/lib/qt5/bin/qmake" ]] && QMAKE_CANDIDATES+=("/usr/lib/qt5/bin/qmake")
+[[ -x "/usr/lib64/qt5/bin/qmake" ]] && QMAKE_CANDIDATES+=("/usr/lib64/qt5/bin/qmake")
+
+QMAKE_BIN=""
+for candidate in "${QMAKE_CANDIDATES[@]}"; do
+  echo "Testing qmake candidate: $candidate"
+  MKSPECS_DIR=$("$candidate" -query QT_INSTALL_MKSPECS 2>/dev/null || echo "")
+  if [[ -n "$MKSPECS_DIR" && -d "$MKSPECS_DIR/modules" && -f "$MKSPECS_DIR/modules/qt_lib_core.pri" ]]; then
+    echo "Selected qmake: $candidate (mkspecs found at $MKSPECS_DIR)"
+    QMAKE_BIN="$candidate"
+    break
+  else
+    echo "Rejected $candidate: mkspecs missing or incomplete"
+  fi
+done
+
+if [[ -z "$QMAKE_BIN" ]]; then
+  echo "No working qmake found; trying to install qt5-mkspecs and qt5-base..."
+  dnf_install_available qt5-mkspecs qt5-qtbase-mkspecs qt5-base-mkspecs libqt5-mkspecs \
+    qt5-base qt5-qtbase libqt5-base
+  # Retry qmake selection
+  for candidate in "${QMAKE_CANDIDATES[@]}"; do
+    echo "Retesting qmake candidate: $candidate"
+    MKSPECS_DIR=$("$candidate" -query QT_INSTALL_MKSPECS 2>/dev/null || echo "")
+    if [[ -n "$MKSPECS_DIR" && -d "$MKSPECS_DIR/modules" && -f "$MKSPECS_DIR/modules/qt_lib_core.pri" ]]; then
+      echo "Selected qmake: $candidate (mkspecs found at $MKSPECS_DIR)"
+      QMAKE_BIN="$candidate"
+      break
+    else
+      echo "Still rejected $candidate: mkspecs missing or incomplete"
+    fi
+  done
+fi
+
+if [[ -z "$QMAKE_BIN" ]]; then
+  echo "ERROR: No working qmake found even after installing mkspecs." >&2
+  echo "Qt5 devel installation on MOS 12 may be incomplete." >&2
+  echo "Check dnf search qt5 | grep mkspecs" >&2
+  exit 1
+fi
+
+echo "qmake selected: $QMAKE_BIN"
+
+# Ensure Qt5 module development packages exist.
+dnf_install_provider_of_capability "pkgconfig(Qt5Core)" "Qt5Core" || true
+dnf_install_provider_of_capability "pkgconfig(Qt5Gui)" "Qt5Gui" || true
+dnf_install_provider_of_capability "pkgconfig(Qt5Widgets)" "Qt5Widgets" || true
+dnf_install_provider_of_capability "pkgconfig(Qt5Qml)" "Qt5Qml" || true
+dnf_install_provider_of_capability "pkgconfig(Qt5Quick)" "Qt5Quick" || true
+
+# QuickControls2 is optional depending on QML imports, but try if available.
+dnf_install_provider_of_capability "pkgconfig(Qt5QuickControls2)" "Qt5QuickControls2" || true
+
+# Fallback: if Qt5Core pkg-config is still not found, try installing common Qt5 devel packages by name.
+if command -v pkg-config >/dev/null 2>&1 && ! pkg-config --exists Qt5Core 2>/dev/null; then
+  echo "Qt5Core pkg-config not found after provider installs; trying fallback Qt5 devel packages..."
+  dnf_install_available \
+    qt5-base-devel qt5-qtbase-devel libqt5-base-devel qt5-devel qt-devel \
+    qt5-declarative-devel qt5-qtdeclarative-devel libqt5-declarative-devel \
+    qt5-tools-devel qt5-qttools-devel libqt5-tools-devel \
+    qt5-quickcontrols2-devel qt5-qtquickcontrols2-devel libqt5-quickcontrols2-devel
+fi
+
 echo "Creating build directory..."
 mkdir -p build-linux
 cd build-linux
 
 echo "Building Cetus..."
-qmake ../Cetus.pro
+"$QMAKE_BIN" ../Cetus.pro
 make -j$(nproc)
 
 echo "Running Cetus (in background)..."
