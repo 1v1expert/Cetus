@@ -67,6 +67,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     patchelf \
     python \
     perl \
+    libgpgme11 \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
 # Note: appimagetool will be downloaded on the host to avoid FUSE issues in Docker
