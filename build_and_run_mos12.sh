@@ -177,6 +177,11 @@ fi
 
 echo "qmake selected: $QMAKE_BIN"
 
+# Ensure Qt5 module packages are installed
+echo "Installing Qt5 runtime and devel packages..."
+dnf_install_available \
+  qt5-qtbase qt5-qtbase-gui qt5-qtdeclarative qt5-qtquickcontrols2
+
 # Ensure Qt5 module development packages exist
 echo "Installing Qt5 module devel packages..."
 dnf_install_available \
@@ -197,6 +202,8 @@ mkdir -p build-linux
 cd build-linux
 
 echo "Building Cetus..."
+# Disable lupdate/lrelease since they are not available
+export CETUS_NO_LINGUIST=1
 "$QMAKE_BIN" ../Cetus.pro
 make -j$(nproc)
 
