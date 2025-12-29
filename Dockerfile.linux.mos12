@@ -71,21 +71,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgpgme11 \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 
-# Install Machinekit QML modules (from PPA or build from source)
+# Install Machinekit QML modules dependencies
 # Note: These modules are required for Cetus to run
-RUN apt-get update && apt-get install -y software-properties-common && \
-    add-apt-repository -y ppa:machinekit/machinekit || true && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-        python-pyqt5 \
-        python-pyqt5.qtopengl \
-        python-dbus.mainloop.pyqt5 \
-        python-configobj \
-        python-zmq \
-        python-protobuf \
-        python-avahi \
-        python-simplejson \
-        pyqt5-dev-tools \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         qtbase5-private-dev \
         libzmq3-dev \
         libczmq-dev \
@@ -95,23 +83,18 @@ RUN apt-get update && apt-get install -y software-properties-common && \
         libprotobuf-dev \
         libprotoc-dev \
         protobuf-compiler \
-        python-protobuf \
     || echo "WARNING: Some Machinekit dependencies not available, continuing..."
 
 # Clone and build QtQuickVcp (provides Machinekit QML modules)
 RUN cd /tmp && \
-    git clone --depth 1 https://github.com/qtquickvcp/QtQuickVcp.git || true && \
-    if [ -d QtQuickVcp ]; then \
-        cd QtQuickVcp && \
-        git submodule update --init --recursive && \
-        mkdir build && cd build && \
-        qmake ../QtQuickVcp.pro && \
-        make -j$(nproc) && \
-        make install && \
-        cd /tmp && rm -rf QtQuickVcp; \
-    else \
-        echo "WARNING: QtQuickVcp clone failed, Machinekit modules will not be available"; \
-    fi
+    git clone --depth 1 https://github.com/qtquickvcp/QtQuickVcp.git && \
+    cd QtQuickVcp && \
+    git submodule update --init --recursive && \
+    rm -rf build && mkdir -p build && cd build && \
+    qmake ../QtQuickVcp.pro && \
+    make -j$(nproc) && \
+    make install && \
+    cd /tmp && rm -rf QtQuickVcp
 
 # Note: appimagetool will be downloaded on the host to avoid FUSE issues in Docker
 # We only prepare the AppDir here

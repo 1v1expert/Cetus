@@ -28,6 +28,34 @@ dnf_install_available() {
   fi
 }
 
+dnf_install_provider_of_capability() {
+  # Usage: dnf_install_provider_of_capability "pkgconfig(Qt5Core)" "label"
+  # Installs the first package that provides the given capability.
+  local capability=$1
+  local label=${2:-capability}
+
+  local provider
+  if [[ "${ARCH:-}" == "x86_64" ]]; then
+    provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.x86_64[[:space:]]/{print $1; exit}')
+  fi
+  if [[ -z "${provider:-}" ]]; then
+    if [[ "${ARCH:-}" == "x86_64" ]]; then
+      provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.noarch[[:space:]]/{print $1; exit}')
+    fi
+  fi
+  if [[ -z "${provider:-}" ]]; then
+    provider=$(dnf -q provides "$capability" 2>/dev/null | awk '/^[A-Za-z0-9_.+-]+\.[A-Za-z0-9_]+[[:space:]]/{print $1; exit}')
+  fi
+
+  if [[ -n "$provider" ]]; then
+    echo "Installing $label provider: $provider"
+    dnf -y install "$provider"
+    return 0
+  fi
+
+  return 1
+}
+
 echo "Updating system packages..."
 dnf -y makecache
 
@@ -149,25 +177,20 @@ fi
 
 echo "qmake selected: $QMAKE_BIN"
 
-# Ensure Qt5 module development packages exist.
+# Ensure Qt5 module development packages exist
+echo "Installing Qt5 module devel packages..."
+dnf_install_available \
+  libqt5core-devel libqt5gui-devel libqt5widgets-devel \
+  libqt5qml-devel libqt5quick-devel \
+  libqt5network-devel libqt5dbus-devel libqt5sql-devel
+
+# Try installing via pkgconfig as well
 dnf_install_provider_of_capability "pkgconfig(Qt5Core)" "Qt5Core" || true
 dnf_install_provider_of_capability "pkgconfig(Qt5Gui)" "Qt5Gui" || true
 dnf_install_provider_of_capability "pkgconfig(Qt5Widgets)" "Qt5Widgets" || true
 dnf_install_provider_of_capability "pkgconfig(Qt5Qml)" "Qt5Qml" || true
 dnf_install_provider_of_capability "pkgconfig(Qt5Quick)" "Qt5Quick" || true
-
-# QuickControls2 is optional depending on QML imports, but try if available.
 dnf_install_provider_of_capability "pkgconfig(Qt5QuickControls2)" "Qt5QuickControls2" || true
-
-# Fallback: if Qt5Core pkg-config is still not found, try installing common Qt5 devel packages by name.
-if command -v pkg-config >/dev/null 2>&1 && ! pkg-config --exists Qt5Core 2>/dev/null; then
-  echo "Qt5Core pkg-config not found after provider installs; trying fallback Qt5 devel packages..."
-  dnf_install_available \
-    libqt5core-devel libqt5gui-devel libqt5widgets-devel qt5-devel qt-devel \
-    libqt5qml-devel libqt5quick-devel libqt5declarative-devel \
-    libqt5tools-devel \
-    libqt5quickcontrols2-devel libqt5qtquickcontrols2-devel
-fi
 
 echo "Creating build directory..."
 mkdir -p build-linux
