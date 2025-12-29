@@ -69,7 +69,7 @@ mkdir -p build-linux
 cd build-linux
 
 echo "Building Cetus..."
-qmake ../Cetus.pro -r
+qmake ../Cetus.pro
 make -j$(nproc)
 
 echo "Running Cetus (in background)..."
